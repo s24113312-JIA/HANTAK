@@ -1,0 +1,4043 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HANTAK Arcade</title>
+
+  <style>
+    :root{
+      --bg0:#060215;
+      --bg1:#0a1430;
+      --bg2:#140b28;
+
+      --panel: rgba(255,255,255,.06);
+      --panel2: rgba(255,255,255,.09);
+      --line: rgba(255,255,255,.12);
+
+      --text: rgba(255,255,255,.94);
+      --muted: rgba(255,255,255,.70);
+
+      --gold1:#ffd36b;
+      --gold2:#ffb100;
+      --good:#7cffb5;
+      --bad:#ff6f88;
+      --cyan:#43e7ff;
+      --pink:#ff56c9;
+      --violet:#8b6dff;
+
+      --shadow: 0 18px 60px rgba(0,0,0,.55);
+      --glow: 0 0 30px rgba(255,210,120,.14), 0 0 50px rgba(255,86,201,.10), 0 0 70px rgba(67,231,255,.08);
+
+      --coinSize: 92px;
+      --ease: cubic-bezier(.2,.8,.2,1);
+      --spinMs: 980ms;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      /* Improved font stack for cleaner UI */
+      font-family: Poppins, Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      font-weight: 500;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+      color:var(--text);
+      overflow:hidden;
+      background:
+        radial-gradient(1200px 700px at 12% 10%, rgba(255,86,201,.20), transparent 60%),
+        radial-gradient(1100px 650px at 88% 26%, rgba(67,231,255,.18), transparent 60%),
+        radial-gradient(900px 600px at 50% 100%, rgba(255,210,120,.14), transparent 70%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+    }
+
+    #bgGlow{
+      position:fixed; inset:-80px; pointer-events:none; z-index:0;
+      background:
+        radial-gradient(700px 420px at 20% 25%, rgba(255,210,120,.18), transparent 60%),
+        radial-gradient(780px 460px at 80% 25%, rgba(255,86,201,.14), transparent 65%),
+        radial-gradient(900px 520px at 55% 95%, rgba(67,231,255,.12), transparent 70%);
+      filter: blur(22px);
+      opacity:.9;
+      animation: auraMove 12s var(--ease) infinite alternate;
+    }
+    @keyframes auraMove{
+      0%{ transform: translate3d(-10px,-10px,0) scale(1.02); }
+      100%{ transform: translate3d(14px,10px,0) scale(1.06); }
+    }
+
+    #fx{
+      position:fixed; inset:0; width:100%; height:100%;
+      z-index:1; pointer-events:none;
+    }
+
+    .app{ position:relative; z-index:2; height:100vh; display:flex; flex-direction:column; }
+
+    .topbar{
+      display:flex; gap:12px; justify-content:space-between; align-items:center;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      box-shadow: 0 12px 40px rgba(0,0,0,.35);
+    }
+
+    .brand h1{
+      margin:0; font-size: 22px; letter-spacing:.22em; text-transform:uppercase;
+    }
+    .titleRow{ display:flex; flex-direction:row; align-items:center; gap:12px; }
+    .author{ font-size:14px; color: var(--muted); letter-spacing:.06em; }
+    .tagline{ font-size:12px; color: var(--muted); letter-spacing:.06em; }
+
+    .hudPills{ display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; align-items:center; }
+    .pill{
+      padding:7px 10px; border-radius:999px; font-size:12px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.03) inset;
+      white-space:nowrap;
+    }
+    .pill.gold{
+      border-color: rgba(255,210,120,.28);
+      box-shadow: var(--glow);
+      background: linear-gradient(90deg, rgba(255,210,120,.10), rgba(255,86,201,.06), rgba(67,231,255,.06));
+    }
+
+    /* Mini-boss HUD pill */
+    .pill.boss{
+      border-color: rgba(255,86,201,.30);
+      background: linear-gradient(90deg, rgba(255,86,201,.08), rgba(139,109,255,.06));
+      box-shadow: 0 0 30px rgba(139,109,255,.12);
+      color: #fff; font-weight:700;
+      animation: bossPulse 1400ms ease-in-out infinite;
+    }
+    @keyframes bossPulse{
+      0%{ transform: translateY(0); box-shadow: 0 0 20px rgba(139,109,255,.06); }
+      50%{ transform: translateY(-3px); box-shadow: 0 0 36px rgba(255,86,201,.12); }
+      100%{ transform: translateY(0); box-shadow: 0 0 20px rgba(139,109,255,.06); }
+    }
+
+    /* Badge on the antugan for mini-boss levels */
+    .bossBadge{
+      position:absolute; left:12px; top:12px; z-index:26; pointer-events:none;
+      background: linear-gradient(90deg, rgba(255,86,201,.12), rgba(67,231,255,.12));
+      padding:8px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.08);
+      box-shadow: var(--glow); font-size:13px; transform-origin:center; color:#fff;
+      text-transform:uppercase; letter-spacing:.06em;
+      animation: bossBadgePulse 1100ms ease-in-out infinite;
+    }
+    @keyframes bossBadgePulse{
+      0%{ transform: scale(1); opacity:1; }
+      50%{ transform: scale(1.08) rotate(-6deg); opacity:0.95; }
+      100%{ transform: scale(1); opacity:1; }
+    }
+    .volWrap{ display:flex; align-items:center; gap:8px; padding-left:8px; }
+    .volLabel{ font-size:11px; color: var(--muted); letter-spacing:.14em; }
+    #vol{ width: 140px; }
+
+    .btn{
+      font: inherit; color:var(--text);
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      border-radius: 14px;
+      padding: 10px 12px;
+      cursor:pointer;
+      transition: transform 120ms var(--ease), box-shadow 120ms var(--ease), background 120ms var(--ease);
+    }
+    .btn:hover{ transform: translateY(-1px); box-shadow: var(--glow); background: rgba(255,255,255,.10); }
+    .btn:active{ transform: translateY(0) scale(.99); }
+    .btn[disabled]{ opacity:.55; cursor:not-allowed; box-shadow:none; transform:none; }
+    .btn.primary{
+      font-weight:900; letter-spacing:.14em; text-transform:uppercase;
+      border-color: rgba(255,210,120,.28);
+      background: linear-gradient(90deg, rgba(67,231,255,.18), rgba(255,86,201,.14), rgba(255,210,120,.12));
+      box-shadow: var(--glow);
+    }
+    .btn.mini{ padding:8px 10px; border-radius: 12px; }
+
+    .layout{
+      flex:1;
+      display:grid;
+      grid-template-columns: 320px 1fr 320px;
+      gap:12px;
+      padding: 12px;
+      min-height: 0;
+    }
+
+    .panel{
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      padding: 12px;
+      min-height: 0;
+      overflow:hidden;
+    }
+    .panelTitle{
+      font-size:14px; letter-spacing:.14em; text-transform:uppercase;
+      color: rgba(255,255,255,.92); font-weight:700;
+      margin-bottom: 10px;
+    }
+    .panelSub{
+      font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+      color: rgba(255,255,255,.74);
+      margin-bottom: 8px;
+    }
+
+    .footer{
+      margin-top: 12px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: .06em;
+    }
+
+    .card{
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+      padding: 12px;
+      box-shadow: 0 0 0 1px rgba(255,255,255,.03) inset;
+      margin-bottom: 10px;
+    }
+
+    .row{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .k{ color:var(--muted); font-size:12px; letter-spacing:.10em; text-transform:uppercase; font-weight:700; }
+    .v{ font-weight:900; }
+    .v.big{ font-size: 22px; letter-spacing:.05em; }
+
+    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px; }
+    .stat{
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      padding: 10px;
+    }
+
+    .attemptsBlock{ margin-top: 12px; }
+    .hearts{ display:flex; gap:8px; margin-top:8px; align-items:center; }
+    .heart{
+      width: 14px; height: 14px; transform: rotate(45deg);
+      background: rgba(255,255,255,.14);
+      border-radius: 3px;
+      position:relative;
+      opacity:.5;
+    }
+    .heart::before,.heart::after{
+      content:""; width:14px; height:14px; background:inherit;
+      position:absolute; border-radius:50%;
+      top:-7px; left:0;
+    }
+    .heart::after{ left:-7px; top:0; }
+    .heart.filled{
+      background: rgba(255,111,136,.92);
+      opacity:1;
+      box-shadow: 0 0 22px rgba(255,111,136,.22);
+      animation: throb 1.2s var(--ease) infinite;
+    }
+    @keyframes throb{
+      0%,100%{ transform: rotate(45deg) scale(1); }
+      50%{ transform: rotate(45deg) scale(1.16); }
+    }
+
+    .meter{ margin-top: 12px; }
+    .bar{
+      margin-top:8px;
+      height: 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.22);
+      overflow:hidden;
+    }
+    /* renamed from .fill to .barFill to avoid visible 'fill' wording */
+    .barFill{
+      height:100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(67,231,255,.90), rgba(255,86,201,.85), rgba(255,210,120,.85));
+      box-shadow: var(--glow);
+      transition: width 220ms var(--ease);
+    }
+    .hint{ margin-top:8px; font-size:12px; color:rgba(255,255,255,.72); line-height:1.35; }
+
+    .objCard{
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+    }
+    .objTop{
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+    }
+    .objTag{
+      font-size:11px;
+      letter-spacing:.14em;
+      padding: 6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      text-transform:uppercase;
+    }
+    .objText{
+      margin-top:8px;
+      font-size: 13px;
+      color: rgba(255,255,255,.86);
+      line-height:1.35;
+    }
+    .objBar{
+      margin-top:10px;
+      height: 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.22);
+      overflow:hidden;
+    }
+    /* renamed from .objFill to .objBarFill */
+    .objBarFill{
+      height:100%;
+      width:0%;
+      border-radius:999px;
+      background: linear-gradient(90deg, rgba(124,255,181,.9), rgba(67,231,255,.85), rgba(255,210,120,.85));
+      box-shadow: var(--glow);
+      transition: width 220ms var(--ease);
+    }
+    .objSmall{
+      margin-top:8px;
+      font-size: 12px;
+      color: rgba(255,255,255,.72);
+    }
+
+    .rules ul{
+      margin: 10px 0 0 16px;
+      padding: 0;
+      color: rgba(255,255,255,.80);
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+    .actionsRow{ display:flex; gap:10px; margin-top: 12px; flex-wrap:wrap; }
+
+    .center{
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+      gap:10px;
+    }
+
+    .sceneWrap{
+      flex:1;
+      min-height: 340px;
+      border-radius: 18px;
+      border:1px solid rgba(255,255,255,.12);
+      background:
+        radial-gradient(900px 420px at 50% 18%, rgba(255,255,255,.06), transparent 60%),
+        linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.20));
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      position:relative;
+      touch-action: none;
+    }
+
+    .scene{ position:absolute; inset:0; perspective: 950px; }
+    .ambient{
+      position:absolute; inset:0; pointer-events:none;
+      background:
+        radial-gradient(980px 380px at 50% 75%, rgba(0,0,0,.35), transparent 72%),
+        radial-gradient(700px 320px at 55% 70%, rgba(255,255,255,.05), transparent 60%);
+      opacity:.92;
+    }
+
+    .stoneZone{
+      position:absolute;
+      left:50%;
+      top: 40%;
+      transform: translate(-50%, -50%);
+      width: min(560px, 92%);
+      aspect-ratio: 1;
+      display:grid;
+      place-items:center;
+      pointer-events:none;
+    }
+
+    .stoneStack{
+      width:100%; height:100%;
+      transform-style: preserve-3d;
+      position:relative;
+      display:grid;
+      place-items:center;
+    }
+
+    /* KEEP ANTUGAN CIRCULAR */
+    .stone{
+      width:100%; height:100%;
+      border-radius: 999px;
+      transform: rotateX(68deg);
+      transform-style: preserve-3d;
+      border:2px solid rgba(255,255,255,.14);
+      box-shadow:
+        inset 0 18px 40px rgba(255,255,255,.06),
+        inset 0 -22px 50px rgba(0,0,0,.48),
+        0 24px 76px rgba(0,0,0,.62);
+      background:
+        radial-gradient(circle at 20% 28%, rgba(255,255,255,.08) 0 52px, transparent 53px),
+        radial-gradient(circle at 76% 58%, rgba(0,0,0,.22) 0 74px, transparent 75px),
+        radial-gradient(circle at 50% 50%, #2b2f36 0%, #1f232a 55%, #14161b 100%);
+      position:relative;
+      overflow:hidden;
+    }
+    .stone::before{
+      content:"";
+      position:absolute; inset:0;
+      background: linear-gradient(120deg, transparent 0%, rgba(67,231,255,.08) 30%, rgba(255,86,201,.06) 55%, transparent 75%);
+      opacity:.35;
+      transform: translateX(-70%);
+      animation: stoneSweep 3.0s var(--ease) infinite;
+      mix-blend-mode: screen;
+    }
+    @keyframes stoneSweep{
+      0%{ transform: translateX(-70%); }
+      100%{ transform: translateX(70%); }
+    }
+
+    .rings{
+      position:absolute; inset:0;
+      border-radius: 999px;
+      transform: rotateX(68deg);
+      pointer-events:none;
+    }
+    .ring{
+      position:absolute; left:50%; top:50%;
+      transform: translate(-50%,-50%);
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.10);
+      animation: ringPulse 2.4s var(--ease) infinite;
+    }
+    .r1{ width:32%; height:32%; border-color: rgba(255,210,120,.20); box-shadow: 0 0 26px rgba(255,210,120,.10); }
+    .r2{ width:64%; height:64%; border-color: rgba(67,231,255,.16); box-shadow: 0 0 28px rgba(67,231,255,.08); }
+    /* r3 removed per UX request (was pink/purple circle) */
+    @keyframes ringPulse{ 0%,100%{ opacity:.72; } 50%{ opacity:1; } }
+
+    /* Zone info button (replaces inline legend) */
+    .zoneBtn{
+      position:absolute; right:10px; bottom:10px; z-index:24; cursor:pointer;
+      background: rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.06);
+      color:var(--muted); font-size:12px; padding:6px 10px; border-radius:10px;
+      backdrop-filter: blur(6px);
+    }
+    .zoneBtn[disabled]{ opacity:.38; cursor:not-allowed; }
+
+    .ghostTargets{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+    }
+    .ghost{
+      position:absolute;
+      width: 36%;
+      aspect-ratio:1;
+      left:50%; top:50%;
+      transform: translate(-50%,-50%) rotateX(68deg);
+      border-radius:999px;
+      border: 1px dashed rgba(255,210,120,.22);
+      box-shadow: 0 0 28px rgba(255,210,120,.08);
+      opacity:.22;
+      filter: blur(.2px);
+    }
+
+    /* Danger / Crack zones */
+    .dangerLayer{ position:absolute; inset:0; pointer-events:none; z-index:14; }
+    .dangerArc{
+      position:absolute; left:50%; top:50%; transform-origin:center center; pointer-events:none;
+      width:84%; height:84%; border-radius:50%; translate:-50% -50%;
+      mix-blend-mode: screen; filter: blur(.6px); opacity:.92;
+      /* background shows arc wedge; --span in deg, --col is color */
+      background: conic-gradient(var(--col, rgba(255,111,136,.92)) 0deg var(--span, 32deg), rgba(0,0,0,0) var(--span, 32deg) 360deg);
+      mask: radial-gradient(circle, transparent 56%, black 58%);
+      -webkit-mask: radial-gradient(circle, transparent 56%, black 58%);
+    }
+    .dangerArc.small{ width:72%; height:72%; }
+    .dangerArc.faint{ opacity:.66; filter: blur(.9px); }
+
+    .dangerLegend{ position:absolute; right:10px; bottom:10px; color:var(--muted); font-size:12px; }
+
+
+    .reticle{
+      position:absolute;
+      width: 18px; height:18px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.62);
+      box-shadow: 0 0 0 7px rgba(67,231,255,.10), 0 0 26px rgba(255,86,201,.12);
+      transform: translate(-50%,-50%);
+      opacity:0;
+      transition: opacity 120ms var(--ease);
+      pointer-events:none;
+      z-index:5;
+    }
+    .reticle.show{ opacity:1; }
+
+    .aimLine{
+      position:absolute;
+      height:3px;
+      border-radius:999px;
+      background: linear-gradient(90deg, rgba(255,210,120,.26), rgba(67,231,255,.18), rgba(255,86,201,.14));
+      transform-origin:left center;
+      opacity:0;
+      transition: opacity 120ms var(--ease);
+      pointer-events:none;
+      z-index:5;
+      filter: drop-shadow(0 8px 12px rgba(0,0,0,.35));
+    }
+    .aimLine.show{ opacity:1; }
+
+    .coinsLayer{ position:absolute; inset:0; pointer-events:none; z-index:6; }
+    .coinWrap{
+      position:absolute;
+      width: var(--coinSize);
+      height: var(--coinSize);
+      left:0; top:0;
+      will-change: transform;
+      filter: drop-shadow(0 18px 20px rgba(0,0,0,.55));
+    }
+    .coinWrap.landed{
+      animation: landPop 520ms var(--ease) both;
+    }
+    @keyframes landPop{
+      0%{ filter: drop-shadow(0 18px 20px rgba(0,0,0,.55)) drop-shadow(0 0 0 rgba(255,210,120,0)); }
+      35%{ filter: drop-shadow(0 18px 20px rgba(0,0,0,.55)) drop-shadow(0 0 60px rgba(255,210,120,.22)); }
+      100%{ filter: drop-shadow(0 18px 20px rgba(0,0,0,.55)) drop-shadow(0 0 22px rgba(255,210,120,.10)); }
+    }
+
+    /* --- FIRST COIN VISUAL (kept) --- */
+    .coin{
+      width:100%; height:100%;
+      position: relative;
+      border-radius: 999px;
+      transform-style: preserve-3d;
+      transform: rotateY(var(--rot, 0deg));
+      will-change: transform;
+      background:
+        radial-gradient(circle at 26% 22%, #fffef5 0%, #fff8dc 6%, #ffd700 18%, #ffb347 36%, #ff8c00 64%, #d4a000 88%),
+        radial-gradient(circle at 38% 38%, rgba(255,255,255,.06), transparent 45%),
+        linear-gradient(45deg, rgba(255,255,255,.10), transparent 60%);
+      box-shadow: inset 0 24px 56px rgba(255,248,220,.14), inset 0 -12px 28px rgba(0,0,0,.16), 0 28px 56px rgba(0,0,0,.52);
+    }
+    .coin.spinning{
+      animation: flip var(--spinMs) var(--ease) both;
+      animation-delay: var(--delay, 0ms);
+    }
+    @keyframes flip{
+      0%{ transform: rotateY(0deg) rotateZ(0deg); }
+      35%{ transform: rotateY(calc(var(--rot, 720deg) - 360deg)) rotateZ(12deg); }
+      100%{ transform: rotateY(var(--rot, 720deg)) rotateZ(0deg); }
+    }
+    .coin::after{
+      content:"";
+      position:absolute;
+      inset: 3px;
+      border-radius: 999px;
+      border: 6px solid rgba(255, 200, 50, .98);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,250,200,.75),
+        inset 0 12px 32px rgba(0,0,0,.18),
+        0 28px 52px rgba(0,0,0,.42),
+        0 0 54px rgba(255,180,30,.24);
+      transform: translateZ(2px);
+      pointer-events:none;
+    }
+
+    .face{
+      position:absolute;
+      inset:0;
+      border-radius:999px;
+      backface-visibility:hidden;
+      display:grid;
+      place-items:center;
+      overflow:hidden;
+    }
+    .face::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:999px;
+      background:
+        radial-gradient(circle at 24% 20%, rgba(255,255,255,.78), transparent 26%),
+        radial-gradient(circle at 60% 72%, rgba(0,0,0,.16), transparent 62%),
+        radial-gradient(circle at 50% 50%, #fff8dc 0%, #ffe680 16%, #ffd700 32%, #ffb347 56%, #ff8c00 80%, #d4a000 100%);
+    }
+    .face::after{
+      content:"";
+      position:absolute;
+      inset: 7px;
+      border-radius:999px;
+      border: 2px solid rgba(255,255,255,.14);
+      box-shadow: inset 0 0 0 9px rgba(0,0,0,.12);
+    }
+    .shine{
+      position:absolute;
+      inset:-20%;
+      background: linear-gradient(120deg, transparent 32%, rgba(255,255,245,.65) 44%, rgba(255,255,255,1) 50%, rgba(255,250,200,.50) 58%, transparent 65%);
+      transform: translateX(-60%) rotate(8deg);
+      animation: shine 1.4s var(--ease) infinite;
+      mix-blend-mode: screen;
+      filter: blur(1px);
+    }
+    @keyframes shine{
+      0%{ transform: translateX(-60%) rotate(8deg); }
+      100%{ transform: translateX(60%) rotate(8deg); }
+    }
+    .heads{ transform: translateZ(7px); }
+    .tails{ transform: rotateY(180deg) translateZ(7px); }
+
+    svg{
+      width: 72%; height:72%;
+      z-index:2;
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,.35));
+    }
+    .engrave{
+      fill: rgba(32,24,4,.96);
+      stroke: rgba(255,250,200,.90);
+      stroke-width: 1.0;
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,.32));
+    }
+
+    /* Banner popups */
+    .banner{
+      position:absolute;
+      left:50%;
+      top: 18%;
+      transform: translateX(-50%);
+      z-index: 20;
+      pointer-events:none;
+      font-weight: 1000;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+      text-align:center;
+      opacity:0;
+    }
+    .banner.show{
+      animation: bannerInOut 900ms var(--ease) both;
+    }
+    @keyframes bannerInOut{
+      0%{ opacity:0; transform: translateX(-50%) translateY(10px) scale(.92); filter: blur(1px); }
+      20%{ opacity:1; transform: translateX(-50%) translateY(0) scale(1.02); filter: blur(0); }
+      70%{ opacity:1; transform: translateX(-50%) translateY(-2px) scale(1.04); }
+      100%{ opacity:0; transform: translateX(-50%) translateY(-10px) scale(.98); }
+    }
+    .banner .txt{
+      display:inline-block;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.34);
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: var(--glow);
+      font-size: 28px;
+    }
+    .banner .sub{
+      margin-top: 6px;
+      font-size: 13px;
+      color: rgba(255,255,255,.75);
+    }
+
+    /* Arcade centered popups (LEVEL / TASK) */
+    #arcadePopup{ position:fixed; inset:0; display:grid; place-items:center; pointer-events:none; z-index:40; }
+    .arcPopup{ pointer-events:none; text-align:center; color:var(--text); }
+    .arcLevel{
+      font-weight:900; letter-spacing:.12em; text-transform:uppercase;
+      font-size: 64px; padding: 40px 36px; border-radius: 18px; background: rgba(0,0,0,.34);
+      border:1px solid rgba(255,255,255,.12); box-shadow: var(--glow);
+      animation: arcPopInOut 720ms var(--ease) both;
+    }
+    @keyframes arcPopInOut{
+      0%{ transform: scale(.8) translateY(12px); opacity:0; }
+      18%{ transform: scale(1.06) translateY(0); opacity:1; }
+      60%{ transform: scale(1.02) translateY(-6px); opacity:1; }
+      100%{ transform: scale(.92) translateY(-18px); opacity:0; }
+    }
+    .arcTask{
+      font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+      font-size:18px; padding: 18px 22px; border-radius:14px; background: rgba(0,0,0,.28);
+      border:1px solid rgba(255,255,255,.10); box-shadow: 0 8px 40px rgba(0,0,0,.45);
+      transform-origin:center center;
+      animation: arcTaskInOut 2200ms var(--ease) both;
+      max-width: min(880px, 92%);
+    }
+    .arcTask .hdr{ font-size:12px; color:var(--muted); letter-spacing:.16em; margin-bottom:8px; }
+    .arcBoss{
+      font-weight:900; letter-spacing:.12em; text-transform:uppercase;
+      font-size:20px; padding: 22px 26px; border-radius:16px; background: linear-gradient(90deg, rgba(255,86,201,.12), rgba(67,231,255,.12));
+      border:1px solid rgba(255,255,255,.12); box-shadow: var(--glow); color: #fff;
+      transform-origin:center center; animation: arcBossInOut 1400ms var(--ease) both; max-width: min(680px, 92%);
+    }
+
+    /* Countdown overlay */
+    .countOverlay{ pointer-events:none; position:fixed; inset:0; display:grid; place-items:center; z-index:48; }
+    .countNum{
+      font-weight:900; font-size:110px; letter-spacing:.06em; text-transform:uppercase; color:#fff;
+      padding: 28px 40px; border-radius:18px; background: rgba(0,0,0,.42); border:1px solid rgba(255,255,255,.12);
+      box-shadow: var(--glow); transform-origin:center center; animation: countPop 420ms var(--ease) both;
+    }
+    .countToss{ font-size:56px; padding:14px 22px; }
+    @keyframes countPop{ 0%{ transform: scale(.8) rotate(-6deg); opacity:0 } 40%{ transform: scale(1.08) rotate(2deg); opacity:1 } 100%{ transform: scale(1.0) rotate(0); opacity:1 } }
+
+    /* Scene pulse for countdown beats */
+    .sceneWrap.pulse{ animation: scenePulse 180ms var(--ease); }
+    @keyframes scenePulse{ 0%{ transform: none; box-shadow: 0 0 0 rgba(255,255,255,0); } 30%{ transform: scale(1.02); } 100%{ transform: none; } }
+
+    /* Camera idle sway + subtle zoom (respects reduced-motion) */
+    @media (prefers-reduced-motion: no-preference){
+      :root{ --idle-dur: 6s; --idle-amp: 8px; --idle-rot: 0.6deg; --idle-scale: 1.012; }
+      .sceneWrap.idle{ animation: idleSway var(--idle-dur) ease-in-out infinite; transform-origin:center center; }
+      @keyframes idleSway{
+        0%{ transform: translate3d(0,0,0) rotate(0deg) scale(1); }
+        25%{ transform: translate3d(var(--idle-amp), calc(var(--idle-amp) / 3), 0) rotate(var(--idle-rot)) scale(var(--idle-scale)); }
+        50%{ transform: translate3d(0, calc(var(--idle-amp) / 6), 0) rotate(calc(var(--idle-rot) * -0.4)) scale(1); }
+        75%{ transform: translate3d(calc(var(--idle-amp) * -1), calc(var(--idle-amp) / 3), 0) rotate(calc(var(--idle-rot) * -1)) scale(var(--idle-scale)); }
+        100%{ transform: translate3d(0,0,0) rotate(0deg) scale(1); }
+      }
+    }
+
+    /* Coin landing flashes */
+    .coinFlash{ animation: coinFlashAnim 320ms var(--ease) both; }
+    @keyframes coinFlashAnim{ 0%{ transform: scale(1); box-shadow: none } 50%{ transform: scale(1.06); box-shadow: 0 0 26px rgba(255,210,120,.18) } 100%{ transform: scale(1); box-shadow: none } }
+    .bullFlash{ animation: bullFlashAnim 460ms linear both; }
+    @keyframes bullFlashAnim{ 0%{ transform: scale(1); box-shadow: none } 30%{ transform: scale(1.08); box-shadow: 0 0 48px rgba(255,86,201,.28) } 100%{ transform: scale(1); box-shadow: none } }
+    @keyframes arcBossInOut{ 0%{ transform: scale(.86) translateY(12px); opacity:0; } 18%{ transform: scale(1.04) translateY(0); opacity:1; } 60%{ transform: scale(1.02) translateY(-6px); opacity:1; } 100%{ transform: scale(.96) translateY(-22px); opacity:0; } }
+    .arcTask .lbl{ font-size:16px; color:var(--text); }
+    @keyframes arcTaskInOut{
+      0%{ opacity:0; transform: translateY(8px) scale(.98); }
+      12%{ opacity:1; transform: translateY(0) scale(1.02); }
+      80%{ opacity:1; transform: translateY(-6px) scale(1.0); }
+      100%{ opacity:0; transform: translateY(-20px) scale(.96); }
+    }
+
+    /* Control strip */
+    .controlStrip{
+      border-radius: 18px;
+      border:1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,.18));
+      box-shadow: var(--shadow);
+      padding: 10px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .callChip{
+      display:flex; align-items:center; gap:10px; justify-content:space-between;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      padding: 10px 12px;
+    }
+    .callChip .lbl{ color:var(--muted); font-size:12px; letter-spacing:.10em; text-transform:uppercase; }
+    .callChip .val{ font-weight:1000; letter-spacing:.16em; }
+    .callChip .lock{
+      font-size:12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+    }
+    .tossBtn{
+      width: min(420px, 100%);
+      align-self:center;
+      padding: 14px 16px;
+      border-radius: 16px;
+    }
+    .infoLine{
+      text-align:center;
+      font-size:12px;
+      color: rgba(255,255,255,.70);
+    }
+
+    /* Ladder */
+    .ladder{
+      overflow:auto;
+      max-height: calc(100vh - 210px);
+      padding-right: 6px;
+    }
+    .ladderItem{
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.16);
+      padding: 12px;
+      margin-bottom: 10px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+    }
+    .ladderItem .lvl{ font-size:12px; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; }
+    .ladderItem .tier{ font-weight:1000; }
+    .ladderItem.current{
+      border-color: rgba(67,231,255,.28);
+      box-shadow: var(--glow);
+      background: linear-gradient(180deg, rgba(67,231,255,.12), rgba(0,0,0,.16));
+    }
+    .ladderItem.secured{
+      border-color: rgba(124,255,181,.22);
+      box-shadow: 0 0 28px rgba(124,255,181,.12);
+    }
+
+    /* Overlay / Modal */
+    .overlay{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,.66);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:100;
+      padding: 18px;
+    }
+    .overlay.show{ display:flex; }
+    .modal{
+      width: min(980px, 100%);
+      border-radius: 18px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(16, 20, 34, .92);
+      box-shadow: 0 30px 110px rgba(0,0,0,.62);
+      backdrop-filter: blur(14px);
+      overflow:hidden;
+    }
+    .modalHead{
+      display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
+      padding: 14px 14px 10px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+    }
+    .modalTitle{ font-size:16px; letter-spacing:.14em; text-transform:uppercase; font-weight:1000; }
+    .modalSub{ font-size:13px; color:var(--muted); margin-top:6px; line-height:1.35; }
+    .modalBody{ padding: 14px; }
+    .modalFoot{
+      padding: 12px 14px;
+      border-top:1px solid rgba(255,255,255,.10);
+      display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap;
+    }
+
+    .pickGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+    }
+    .pickCard{
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      padding: 14px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      align-items:center;
+      cursor:pointer;
+      transition: transform 160ms var(--ease), box-shadow 160ms var(--ease), border-color 160ms var(--ease);
+    }
+    .pickCard:hover{ transform: translateY(-2px); box-shadow: var(--glow); }
+    .pickCard.active{
+      border-color: rgba(255,210,120,.30);
+      box-shadow: var(--glow);
+    }
+    .pickLabel{
+      font-weight:1000;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+      color: rgba(255,255,255,.84);
+    }
+
+    .miniCoin{
+      width: 150px;
+      height: 150px;
+      display:grid;
+      place-items:center;
+    }
+    .miniCoin .coinWrap{ position:relative; width: 140px; height: 140px; transform:none; filter:none; }
+    .miniCoin .coin{ transform: rotateY(0deg); }
+
+    .keepRow{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      padding: 12px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+    }
+    .keepRow .bigCall{ font-weight:1000; letter-spacing:.18em; }
+    .keepRow .timer{
+      font-weight:1000;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+    }
+
+    .note{
+      margin-top: 12px;
+      color: rgba(255,255,255,.78);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    /* Responsive */
+    @media (max-width: 1060px){
+      body{ overflow:auto; }
+      .layout{ grid-template-columns: 1fr; height:auto; }
+      .ladder{ max-height: unset; }
+      .sceneWrap{ min-height: 420px; }
+    }
+
+    /* ==========================
+       TOASTS (arcade status popups)
+    ========================== */
+    #toasts{
+      position: fixed;
+      top: 74px;
+      right: 14px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .toast{
+      width: min(320px, calc(100vw - 28px));
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(0,0,0,.35);
+      box-shadow: 0 18px 60px rgba(0,0,0,.50), 0 0 40px rgba(67,231,255,.10);
+      backdrop-filter: blur(10px);
+      padding: 12px 12px;
+      transform: translateX(14px) scale(.98);
+      opacity: 0;
+      animation: toastInOut 2200ms cubic-bezier(.2,.8,.2,1) both;
+    }
+    .toast.good{
+      border-color: rgba(124,255,181,.28);
+      box-shadow: 0 18px 60px rgba(0,0,0,.50), 0 0 44px rgba(124,255,181,.10);
+    }
+    .toast.bad{
+      border-color: rgba(255,111,136,.28);
+      box-shadow: 0 18px 60px rgba(0,0,0,.50), 0 0 44px rgba(255,111,136,.10);
+    }
+    .toast .tTitle{
+      font-weight: 1000;
+      letter-spacing: .10em;
+      text-transform: uppercase;
+      font-size: 12px;
+      opacity: .9;
+    }
+    .toast .tBody{
+      margin-top: 6px;
+      font-size: 13px;
+      color: rgba(255,255,255,.85);
+      line-height: 1.35;
+    }
+    @keyframes toastInOut{
+      0%{ opacity:0; transform: translateX(14px) scale(.98); filter: blur(1px); }
+      12%{ opacity:1; transform: translateX(0) scale(1.00); filter: blur(0); }
+      80%{ opacity:1; transform: translateX(0) scale(1.02); }
+      100%{ opacity:0; transform: translateX(10px) scale(.98); }
+    }
+
+    /* scene punch / shake */
+    .sceneWrap.kick{ animation: kick 210ms cubic-bezier(.2,.8,.2,1) both; }
+    @keyframes kick{
+      0%{ transform: scale(1); }
+      45%{ transform: scale(1.018); }
+      100%{ transform: scale(1); }
+    }
+    .sceneWrap.shake{ animation: shake 260ms cubic-bezier(.2,.8,.2,1) both; }
+    @keyframes shake{
+      0%{ transform: translate3d(0,0,0); }
+      20%{ transform: translate3d(-5px,3px,0); }
+      40%{ transform: translate3d(6px,-4px,0); }
+      60%{ transform: translate3d(-4px,-3px,0); }
+      80%{ transform: translate3d(4px,4px,0); }
+      100%{ transform: translate3d(0,0,0); }
+    }
+
+    /* ==========================
+       JACKPOT WHEEL
+    ========================== */
+    .wheelRow{
+      display:grid;
+      grid-template-columns: 320px 1fr;
+      gap:14px;
+      align-items:center;
+    }
+    @media (max-width: 860px){
+      .wheelRow{ grid-template-columns: 1fr; }
+    }
+    .wheelWrap{
+      width: 280px; height:280px;
+      margin: 0 auto;
+      position: relative;
+    }
+    .wheel{
+      width:100%; height:100%;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: var(--shadow), var(--glow);
+      background:
+        conic-gradient(
+          rgba(255,210,120,.95) 0 18%,
+          rgba(67,231,255,.90) 18% 36%,
+          rgba(255,86,201,.90) 36% 54%,
+          rgba(124,255,181,.90) 54% 72%,
+          rgba(139,109,255,.90) 72% 90%,
+          rgba(255,111,136,.90) 90% 100%
+        );
+      transform: rotate(var(--wheelRot, 0deg));
+      transition: transform 1900ms cubic-bezier(.2,.8,.2,1);
+    }
+    .wheel::after{
+      content:"";
+      position:absolute; inset:12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.20);
+      box-shadow: inset 0 0 0 10px rgba(0,0,0,.18);
+    }
+    .wheelCenter{
+      position:absolute;
+      left:50%; top:50%;
+      transform: translate(-50%,-50%);
+      width: 86px; height:86px;
+      border-radius:999px;
+      border: 1px solid rgba(255,255,255,.20);
+      background: rgba(0,0,0,.30);
+      box-shadow: 0 0 40px rgba(255,210,120,.12);
+      display:grid;
+      place-items:center;
+      font-weight: 1000;
+      letter-spacing:.10em;
+      text-transform: uppercase;
+    }
+    .wheelPointer{
+      position:absolute;
+      left:50%;
+      top:-6px;
+      transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 12px solid transparent;
+      border-right: 12px solid transparent;
+      border-bottom: 22px solid rgba(255,255,255,.90);
+      filter: drop-shadow(0 8px 12px rgba(0,0,0,.5));
+    }
+    .wheelLegend{
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+      padding: 12px;
+    }
+    .wheelLegend ul{
+      margin: 10px 0 0 18px;
+      line-height:1.55;
+      color: rgba(255,255,255,.80);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="bgGlow"></div>
+  <canvas id="fx"></canvas>
+
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="titleRow">
+          <h1>HANTAK</h1>
+          <span class="author">安嘉梅 | Jia Mae Estrera</span>
+          <span class="tagline">Arcade Toss • Aim • Moving Antugan • Risk or Claim</span>
+        </div>
+      </div>
+
+      <div class="hudPills">
+        <div class="pill" id="pillPhase">Phase: MENU</div>
+        <div class="pill" id="pillLevel">Level: 1</div>
+        <div class="pill boss" id="pillBoss" style="display:none">MINI-BOSS</div>
+        <div class="pill" id="pillAttempts">Attempts: 3/3</div>
+        <div class="pill" id="pillTimer">Timer: —</div>
+        <div class="pill gold" id="pillCall">Call: —</div>
+        <div class="pill" id="pillSafe">SAFE: 0</div>
+        <div class="pill" id="pillWins">Wins: 0</div>
+        <div class="pill" id="pillScore">Score: 0</div>
+        <div class="pill" id="pillCombo">Combo: 0</div>
+        <div class="pill" id="pillMulti">x1.0</div>
+
+        <div class="volWrap">
+          <span class="volLabel">VOL</span>
+          <input id="vol" type="range" min="0" max="1" step="0.01" value="0.7" />
+        </div>
+
+        <button class="btn" id="voiceBtn" title="Toggle announcer voice">Voice: ON</button>
+        <button class="btn" id="musicBtn" title="Toggle background music">Music: OFF</button>
+        <button class="btn" id="helpBtn">Help</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <!-- LEFT: PLAYER -->
+      <aside class="panel left">
+        <div class="panelTitle">PLAYER</div>
+
+        <div class="card">
+          <div class="row">
+            <div class="k">Secured Prize</div>
+            <div class="v" id="securedText">None</div>
+          </div>
+
+          <div class="grid2">
+            <div class="stat">
+              <div class="k">Streak</div>
+              <div class="v big" id="streakText">0</div>
+            </div>
+            <div class="stat">
+              <div class="k">Score</div>
+              <div class="v big" id="scoreText">0</div>
+            </div>
+          </div>
+
+          <div class="attemptsBlock">
+            <div class="k">Attempts</div>
+            <div class="hearts" id="hearts"></div>
+          </div>
+
+          <div class="meter">
+            <div class="k">Hype Meter</div>
+            <div class="bar">
+              <div class="barFill" id="hypeFill"></div>
+            </div>
+            <div class="hint" id="hypeHint">Hit inner/bull to build hype + earn SAFE chances. Fever at 100% — miss twice and you CHOKE.</div>
+          </div>
+
+          <div class="objCard">
+            <div class="objTop">
+              <div class="k">Mini Objective</div>
+              <div class="objTag" id="objTag">—</div>
+            </div>
+            <div class="objText" id="objText">Start the game to get an objective.</div>
+            <div class="objBar"><div class="objBarFill" id="objFill"></div></div>
+            <div class="objSmall" id="objSmall">0/0</div>
+          </div>
+        </div>
+
+        <div class="card rules">
+          <div class="panelSub">RULES SNAPSHOT</div>
+          <ul>
+            <li><b>Lvl 1–2:</b> 3 attempts</li>
+            <li><b>Lvl 3+:</b> 1 attempt + <b>10s</b> timer</li>
+            <li><b>After toss:</b> KEEP/CHANGE popup (3s)</li>
+            <li><b>Free change:</b> up to Lvl 4</li>
+            <li><b>Lvl 5+:</b> change needs SAFE or ALL-IN</li>
+            <li><b>ALL-IN:</b> sacrifice secured prize → harder toss + boosted reward</li>
+            <li><b>Mini-Boss:</b> every 3rd level → faster antugan, shorter timer, defeat by landing 3 INSIDE for extra reward</li>
+            <li><b>Perfect Land:</b> 3 coins INSIDE → +time, +SAFE, +score bonus</li>
+            <li><b>Sloppy Land:</b> 1 coin INSIDE on Lvl 3+ → pressure: next toss harder & -time</li>
+            <li><b>Arcade Bonus:</b> every <b>3 wins</b> → JACKPOT SPIN</li>
+          </ul>
+
+          <div class="actionsRow">
+            <button class="btn" id="claimBtn">Stop & Claim</button>
+            <button class="btn" id="resetBtn">Reset</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- CENTER: SCENE -->
+      <section class="center">
+        <div class="sceneWrap" id="sceneWrap">
+          <div class="scene">
+            <div class="ambient"></div>
+
+            <!-- Antugan zone -->
+            <div class="stoneZone" id="stoneZone">
+              <div class="stoneStack" id="stoneStack">
+                <div class="stone" id="stone"></div>
+                <div class="rings">
+                  <div class="ring r1"></div>
+                  <div class="ring r2"></div>
+                </div>
+
+                <!-- Illusion targets (ghosts) -->
+                <div class="ghostTargets" id="ghostTargets"></div>
+                <div class="bossBadge" id="bossBadge" style="display:none">🔥 MINI-BOSS</div>
+
+                <!-- Danger / Crack zones (rotating) -->
+                <div class="dangerLayer" id="dangerLayer"></div>
+                <button class="zoneBtn" id="zoneBtn" title="Zone Info">Zones</button>
+
+              </div>
+            </div>
+
+            <!-- Aim overlay -->
+            <div class="reticle" id="reticle"></div>
+            <div class="aimLine" id="aimLine"></div>
+
+            <!-- Coin throws -->
+            <div class="coinsLayer" id="coinsLayer">
+              <div class="coinWrap" id="wrap0">
+                <div class="coin" id="coin0" style="--rot:0deg;">
+                  <div class="face heads">
+                    <div class="shine"></div>
+                    <svg viewBox="0 0 100 100" role="img" aria-label="Heads">
+                      <circle class="engrave" cx="50" cy="50" r="40" fill="none"></circle>
+                      <path class="engrave" d="M52 30c8 0 14 6 14 14s-6 14-14 14-14-6-14-14 6-14 14-14z"/>
+                      <path class="engrave" d="M26 78c6-16 18-24 28-24s22 8 28 24" fill="none"/>
+                    </svg>
+                  </div>
+                  <div class="face tails">
+                    <div class="shine"></div>
+                    <svg viewBox="0 0 100 100" role="img" aria-label="Tails">
+                      <circle class="engrave" cx="50" cy="50" r="40" fill="none"></circle>
+                      <path class="engrave" d="M50 26l7 15 16 2-12 11 3 16-14-8-14 8 3-16-12-11 16-2z"/>
+                      <path class="engrave" d="M34 70c4 6 10 10 16 10s12-4 16-10" fill="none" opacity=".8"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div class="coinWrap" id="wrap1">
+                <div class="coin" id="coin1" style="--rot:0deg;">
+                  <div class="face heads">
+                    <div class="shine"></div>
+                    <svg viewBox="0 0 100 100" role="img" aria-label="Heads">
+                      <circle class="engrave" cx="50" cy="50" r="40" fill="none"></circle>
+                      <path class="engrave" d="M52 30c8 0 14 6 14 14s-6 14-14 14-14-6-14-14 6-14 14-14z"/>
+                      <path class="engrave" d="M26 78c6-16 18-24 28-24s22 8 28 24" fill="none"/>
+                    </svg>
+                  </div>
+                  <div class="face tails">
+                    <div class="shine"></div>
+                    <svg viewBox="0 0 100 100" role="img" aria-label="Tails">
+                      <circle class="engrave" cx="50" cy="50" r="40" fill="none"></circle>
+                      <path class="engrave" d="M50 26l7 15 16 2-12 11 3 16-14-8-14 8 3-16-12-11 16-2z"/>
+                      <path class="engrave" d="M34 70c4 6 10 10 16 10s12-4 16-10" fill="none" opacity=".8"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <div class="coinWrap" id="wrap2">
+                <div class="coin" id="coin2" style="--rot:0deg;">
+                  <div class="face heads">
+                    <div class="shine"></div>
+                    <svg viewBox="0 0 100 100" role="img" aria-label="Heads">
+                      <circle class="engrave" cx="50" cy="50" r="40" fill="none"></circle>
+                      <path class="engrave" d="M52 30c8 0 14 6 14 14s-6 14-14 14-14-6-14-14 6-14 14-14z"/>
+                      <path class="engrave" d="M26 78c6-16 18-24 28-24s22 8 28 24" fill="none"/>
+                    </svg>
+                  </div>
+                  <div class="face tails">
+                    <div class="shine"></div>
+                    <svg viewBox="0 0 100 100" role="img" aria-label="Tails">
+                      <circle class="engrave" cx="50" cy="50" r="40" fill="none"></circle>
+                      <path class="engrave" d="M50 26l7 15 16 2-12 11 3 16-14-8-14 8 3-16-12-11 16-2z"/>
+                      <path class="engrave" d="M34 70c4 6 10 10 16 10s12-4 16-10" fill="none" opacity=".8"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Arcade banners -->
+            <div class="banner" id="banner"></div>
+            <div id="arcadePopup"></div>
+          </div>
+        </div>
+
+        <!-- CONTROL STRIP -->
+        <div class="controlStrip">
+          <div class="callChip">
+            <span class="lbl">Your Call</span>
+            <span class="val" id="callText">—</span>
+            <span class="lock" id="lockText">FREE</span>
+          </div>
+
+          <button class="btn primary tossBtn" id="tossBtn" disabled>TOSS</button>
+
+          <div class="infoLine" id="infoLine">
+            Drag on the scene to aim • Release to toss • Hit inner/bull for hype
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: LADDER -->
+      <aside class="panel right">
+        <div class="panelTitle">PRIZE LADDER</div>
+
+        <div class="card">
+          <div class="row">
+            <div class="k">Next Reward</div>
+            <div class="v" id="nextReward">Starter Tier</div>
+          </div>
+          <div class="row">
+            <div class="k">Difficulty</div>
+            <div class="v" id="diffText">Warm-up</div>
+          </div>
+        </div>
+
+        <div class="ladder" id="ladder"></div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- OVERLAY / MODALS -->
+  <div class="overlay" id="overlay">
+    <div class="modal" id="modal">
+      <div class="modalHead">
+        <div>
+          <div class="modalTitle" id="mTitle">Title</div>
+          <div class="modalSub" id="mSub">Subtitle</div>
+        </div>
+        <button class="btn mini" id="mClose">Close</button>
+      </div>
+
+      <div class="modalBody" id="mBody"></div>
+      <div class="modalFoot" id="mFoot"></div>
+    </div>
+  </div>
+
+  <!-- TOASTS -->
+  <div id="toasts"></div>
+
+
+  <script>
+    /* ============================
+       HANTAK Arcade — Final
+       Adds ALL 3:
+       1) Jackpot Spin Wheel every 3 wins
+       2) Announcer Voice (speechSynthesis toggle)
+       3) Mini Objectives system with rewards
+       Keeps:
+       - coin visual EXACT
+       - circular antugan
+       - same aim + toss feel
+    ============================ */
+
+    const $ = (id) => document.getElementById(id);
+
+    // DOM
+    const fxCanvas = $("fx");
+    const sceneWrap = $("sceneWrap");
+    const stoneZone = $("stoneZone");
+    const stoneStack = $("stoneStack");
+    const ghostTargets = $("ghostTargets");
+    const reticle = $("reticle");
+    const aimLine = $("aimLine");
+    const banner = $("banner");
+    const wraps = [$("wrap0"), $("wrap1"), $("wrap2")];
+    const coins = [$("coin0"), $("coin1"), $("coin2")];
+
+    const pillPhase = $("pillPhase");
+    const pillLevel = $("pillLevel");
+    const pillBoss = $("pillBoss");
+    const pillAttempts = $("pillAttempts");
+    const pillTimer = $("pillTimer");
+    const pillCall = $("pillCall");
+    const pillSafe = $("pillSafe");
+    const pillWins = $("pillWins");
+    const pillScore = $("pillScore");
+    const pillCombo = $("pillCombo");
+    const pillMulti = $("pillMulti");
+
+    const callText = $("callText");
+    const lockText = $("lockText");
+    const securedText = $("securedText");
+    const streakText = $("streakText");
+    const scoreText = $("scoreText");
+    const heartsEl = $("hearts");
+    const hypeFill = $("hypeFill");
+    const hypeHint = $("hypeHint");
+
+    const objTag = $("objTag");
+    const objText = $("objText");
+    const objFill = $("objFill");
+    const objSmall = $("objSmall");
+
+    const nextReward = $("nextReward");
+    const diffText = $("diffText");
+
+    const ladderEl = $("ladder");
+    const tossBtn = $("tossBtn");
+    const helpBtn = $("helpBtn");
+    const claimBtn = $("claimBtn");
+    const resetBtn = $("resetBtn");
+    const voiceBtn = $("voiceBtn");
+    const musicBtn = $("musicBtn");
+
+    const overlay = $("overlay");
+    const mTitle = $("mTitle");
+    const mSub = $("mSub");
+    const mBody = $("mBody");
+    const mFoot = $("mFoot");
+    const mClose = $("mClose");
+
+    const vol = $("vol");
+    const toasts = $("toasts");
+    const zoneBtn = $("zoneBtn");
+    const bossBadge = $("bossBadge");
+
+    /* ============================
+       RNG
+    ============================ */
+    function randUint32(){
+      if (window.crypto && crypto.getRandomValues){
+        const a = new Uint32Array(1);
+        crypto.getRandomValues(a);
+        return a[0];
+      }
+      return Math.floor(Math.random() * 2**32);
+    }
+    function randBit(){ return (randUint32() & 1); }
+    function randInt(min, maxInclusive){
+      const span = (maxInclusive - min + 1) >>> 0;
+      return min + (randUint32() % span);
+    }
+    function clamp(n, lo, hi){ return Math.max(lo, Math.min(hi, n)); }
+
+    function isHypeHigh(){ return state.fever || state.hype >= 0.75; }
+
+    /* ============================
+       Prize tiers
+    ============================ */
+    const PRIZE_TIERS = [
+      { name:"Starter Tier", options:[
+        {emoji:"✨", name:"Sticker Pack"},
+        {emoji:"🪙", name:"Collector Coin"},
+        {emoji:"🎫", name:"Ticket Bundle"},
+        {emoji:"📛", name:"Badge Pin"},
+      ]},
+      { name:"Fun Tier", options:[
+        {emoji:"🔑", name:"Keychain"},
+        {emoji:"🧸", name:"Mini Plush"},
+        {emoji:"🧢", name:"Cap"},
+        {emoji:"🧴", name:"Bottle"},
+      ]},
+      { name:"Cool Tier", options:[
+        {emoji:"🧸", name:"Plush (Small)"},
+        {emoji:"🎒", name:"Mini Backpack"},
+        {emoji:"💡", name:"LED Light"},
+        {emoji:"🎧", name:"Earphones"},
+      ]},
+      { name:"Premium Tier", options:[
+        {emoji:"🔊", name:"Speaker"},
+        {emoji:"🎧", name:"Headphones"},
+        {emoji:"⌚", name:"Smartwatch (demo)"},
+        {emoji:"🎮", name:"Controller (demo)"},
+      ]},
+      { name:"Rare Tier", options:[
+        {emoji:"🎁", name:"Mystery Box"},
+        {emoji:"💳", name:"Gift Card"},
+        {emoji:"💵", name:"Cash Voucher"},
+        {emoji:"🕹️", name:"Console Voucher"},
+      ]},
+    ];
+
+    function tierForLevel(level){
+      if (level <= 2) return 0;
+      if (level <= 4) return 1;
+      if (level <= 6) return 2;
+      if (level <= 9) return 3;
+      return 4;
+    }
+    function pickPrizeForLevel(level, boosted=false){
+      let t = tierForLevel(level);
+      if (boosted) t = Math.min(PRIZE_TIERS.length-1, t + 1);
+      const pool = PRIZE_TIERS[t].options;
+      return pool[randInt(0, pool.length-1)];
+    }
+
+    /* ============================
+       Difficulty config
+    ============================ */
+    function attemptsForLevel(level){ return (level <= 2) ? 3 : 1; }
+    function isMiniBoss(level){ return (level >= 3) && (level % 3 === 0); }
+
+    function timerForLevel(level){
+      if (level <= 2) return null;
+      // base timer for L3+ is 10s, but mini-boss levels are tighter
+      if (isMiniBoss(level)) return 7; // shorter time for mini-boss challenge
+      return 10;
+    }
+    function difficultyLabel(level, allIn=false){
+      if (allIn) return "ALL-IN CHAOS";
+      if (isMiniBoss(level)) return "MINI-BOSS";
+      if (level <= 2) return "Warm-up";
+      if (level <= 4) return "Rising";
+      if (level <= 7) return "Hard";
+      return "Insane";
+    }
+
+    // Win streak requirement for leveling (adds the "Win streak gate")
+    function antuganSpeed(level, allIn=false){
+      const base = 0.65 + (level-1)*0.16;
+      // mini-boss: faster motion
+      const mini = isMiniBoss(level) ? base * 1.35 : base;
+      return allIn ? mini * 1.9 : mini;
+    }
+    function streakRequirement(level){
+      if (level <= 2) return 1;
+      if (level <= 5) return 2;
+      return 3;
+    }
+
+    function antuganScale(level, allIn=false){
+      const base = Math.max(0.55, 1 - (level-1)*0.05);
+      return allIn ? Math.max(0.42, base - 0.12) : base;
+    }
+    function antuganSpeed(level, allIn=false){
+      const base = 0.65 + (level-1)*0.16;
+      return allIn ? base * 1.9 : base;
+    }
+    function illusionCount(level, allIn=false){
+      if (allIn) return 3;
+      if (level <= 3) return 0;
+      if (level <= 6) return 1;
+      if (level <= 9) return 2;
+      return 3;
+    }
+
+    /* ============================
+       State
+    ============================ */
+    const state = {
+      phase: "menu",
+      call: null,
+      level: 1,
+      attempts: 3,
+      maxAttempts: 3,
+
+      timer: null,
+      timerLeft: null,
+      timerId: null,
+
+      trial: { tossLeft: 3, timeTotal: 25, timeLeft: 25, id: null },
+
+      wins: 0,
+      score: 0,
+      securedPrize: null,
+      securedLevel: 0,
+
+      safeTokens: 0,
+      hype: 0,
+      fever: false,
+      hypeMissCount: 0,
+      chokeActive: false,
+      pressureActive: false,
+
+      tossing: false,
+      keepChangeLock: false,
+      allInNext: false,
+      allInActive: false,
+      audioUnlocked: false,
+
+      // aim
+      aim: { has:false, targetX:0, targetY:0, power:0.55, control:0.9 },
+
+      // antugan
+      antugan: { t: 0, realX: 0, realY: 0 },
+
+      // arcade juice
+      hitStop: 0,
+      combo: 0,
+      mult: 1,
+
+      // special events (variety)
+      event: null,
+
+      // mini-boss flag (every 3rd level)
+      miniBossActive: false,
+      miniBoss: null,
+
+      // danger zones (rotating cracks)
+      dangerZones: [],
+
+      // jackpot
+      winsSinceSpin: 0,
+      pendingSpin: false,
+
+      // voice
+      voiceOn: true,
+      musicOn: true,
+
+      // objectives
+      objective: null, // {id,label,tag,progress,goal,done,reward:{type,amount}}
+    };
+
+    /* ============================
+       Toasts + Screen Punch
+    ============================ */
+    function toast(title, body, type="good"){
+      if (!toasts) return;
+      const el = document.createElement("div");
+      el.className = `toast ${type}`;
+      el.innerHTML = `<div class="tTitle">${title}</div><div class="tBody">${body}</div>`;
+      toasts.appendChild(el);
+      setTimeout(()=> el.remove(), 2400);
+    }
+    const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function startCameraIdle(){
+      if (prefersReducedMotion) return;
+      if (!sceneWrap) return;
+      if (state.tossing || aimState.dragging) return;
+      sceneWrap.classList.add("idle");
+    }
+    function stopCameraIdle(){
+      if (!sceneWrap) return;
+      sceneWrap.classList.remove("idle");
+    }
+    function sceneKick(kind="kick"){
+      const hadIdle = sceneWrap.classList.contains('idle');
+      sceneWrap.classList.remove("kick","shake","idle");
+      void sceneWrap.offsetWidth;
+      sceneWrap.classList.add(kind);
+      setTimeout(()=>{
+        sceneWrap.classList.remove(kind);
+        if (hadIdle && !prefersReducedMotion && !state.tossing && !aimState.dragging) sceneWrap.classList.add('idle');
+      }, 320);
+    }
+    function hitStop(ms=70){
+      state.hitStop = Math.max(state.hitStop, ms/1000);
+    }
+
+    /* ============================
+       Announcer Voice (Speech API)
+    ============================ */
+    function speak(text){
+      if (!state.voiceOn) return;
+      if (!("speechSynthesis" in window)) return;
+      try{
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 1.05;
+        u.pitch = 1.1;
+        u.volume = 1;
+        try{ duckMusic(1000); }catch(e){}
+        speechSynthesis.cancel();
+        speechSynthesis.speak(u);
+      }catch(e){}
+    }
+    voiceBtn.addEventListener("click", () => {
+      state.voiceOn = !state.voiceOn;
+      voiceBtn.textContent = `Voice: ${state.voiceOn ? "ON" : "OFF"}`;
+      toast("VOICE", state.voiceOn ? "Announcer enabled" : "Announcer muted", "good");
+      unlockAudio();
+      sfx("ping");
+    });
+
+    if (musicBtn){
+      musicBtn.addEventListener("click", () => {
+        unlockAudio();
+        toggleMusic();
+        sfx("ping");
+      });
+    }
+
+    // Zone Info popup — shows detailed descriptions in a modal so text isn't crowded around the antugan
+    if (zoneBtn){
+      zoneBtn.addEventListener("click", () => {
+        const zones = state.dangerZones || [];
+        if (!zones.length){
+          showBanner("Zones", "No danger zones this level");
+          return;
+        }
+        const body = zones.map(z => {
+          const label = z.type === "curse" ? "Cursed" : (z.type === "flip" ? "Flip" : "Steal");
+          const desc = z.type === "curse" ? "Coin counts as outside — reduces inside counts." : (z.type === "flip" ? "Flip: coin side outcome may flip." : "Steal: may take a SAFE token or small score.");
+          return `<div style="margin-bottom:10px; line-height:1.25;"><span style="display:inline-block;width:12px;height:12px;background:${z.color};border-radius:3px;margin-right:8px;vertical-align:middle"></span><b>${label}</b><div style="color:var(--muted); font-size:12px; margin-top:6px">${desc}</div></div>`;
+        }).join('');
+
+        openModal({ title:"Danger Zones", sub:"What they do — shown clearly", body });
+      });
+    }
+
+    /* ============================
+       WebAudio (louder)
+    ============================ */
+    let audioCtx = null;
+    let masterGain = null;
+
+    function ensureAudio(){
+      if (!audioCtx){
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = Number(vol.value || 0.7);
+        masterGain.connect(audioCtx.destination);
+      }
+      return audioCtx;
+    }
+    function setVolume(v){ if (masterGain) masterGain.gain.value = v; }
+
+    // Background music (simple looped chord + ducking)
+    let musicGain = null;
+    let musicInterval = null;
+    let musicPlaying = false;
+    let _musicDuckCount = 0;
+    let _musicRestoreTimeout = null;
+    let musicChordInterval = 1200;
+    function setMusicTempo(ms){
+      musicChordInterval = Math.max(420, ms);
+      if (musicInterval){ clearInterval(musicInterval); musicInterval = setInterval(musicPlayFn, musicChordInterval); }
+    }
+
+    function startMusic(){
+      if (musicPlaying) return;
+      const ctx = ensureAudio();
+      if (!musicGain){
+        musicGain = ctx.createGain();
+        musicGain.gain.value = 0.0001;
+        musicGain.connect(masterGain);
+      }
+      musicPlaying = true;
+      const now = ctx.currentTime;
+      musicGain.gain.cancelScheduledValues(now);
+      musicGain.gain.setValueAtTime(0.0001, now);
+      musicGain.gain.linearRampToValueAtTime(0.28, now + 0.6);
+
+      function playChord(){
+        if (!musicPlaying) return;
+        const now2 = ctx.currentTime;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, now2);
+        g.gain.linearRampToValueAtTime(0.24, now2 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, now2 + 0.7);
+        g.connect(musicGain);
+
+        const freqs = [220, 330, 440].map(f => f * (1 + (Math.random()*0.02-0.01)));
+        freqs.forEach((f,i) => {
+          const o = ctx.createOscillator();
+          o.type = i===1 ? 'sawtooth' : 'triangle';
+          o.frequency.setValueAtTime(f, now2);
+          o.detune.setValueAtTime((Math.random()*20-10), now2);
+          o.connect(g);
+          o.start(now2);
+          o.stop(now2 + 0.72);
+        });
+
+        // percussion: soft kick + hat
+        const kick = ctx.createOscillator();
+        const kg = ctx.createGain();
+        kg.gain.setValueAtTime(0.0001, now2);
+        kg.gain.exponentialRampToValueAtTime(0.16, now2 + 0.005);
+        kg.gain.exponentialRampToValueAtTime(0.0001, now2 + 0.12);
+        kick.type = 'sine';
+        kick.frequency.setValueAtTime(60, now2);
+        kick.connect(kg);
+        kg.connect(musicGain);
+        kick.start(now2);
+        kick.stop(now2 + 0.12);
+
+        // hi-hat / shimmer
+        const bufSize = 2048;
+        const buffer = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i=0;i<bufSize;i++) data[i] = (Math.random()*2-1) * 0.45;
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const hf = ctx.createBiquadFilter(); hf.type='highpass'; hf.frequency.setValueAtTime(4000, now2);
+        const ng = ctx.createGain(); ng.gain.setValueAtTime(0.0001, now2); ng.gain.linearRampToValueAtTime(0.08, now2 + 0.006); ng.gain.exponentialRampToValueAtTime(0.0001, now2 + 0.18);
+        noise.connect(hf); hf.connect(ng); ng.connect(musicGain);
+        noise.start(now2); noise.stop(now2 + 0.18);
+      }
+
+      musicPlayFn = playChord;
+      musicPlayFn();
+      musicInterval = setInterval(musicPlayFn, musicChordInterval);
+    }
+
+    function stopMusic(){
+      if (!musicPlaying) return;
+      const ctx = ensureAudio();
+      const now = ctx.currentTime;
+      if (musicGain){
+        musicGain.gain.cancelScheduledValues(now);
+        musicGain.gain.setValueAtTime(musicGain.gain.value || 0.28, now);
+        musicGain.gain.linearRampToValueAtTime(0.0001, now + 0.6);
+      }
+      musicPlaying = false;
+      if (musicInterval){ clearInterval(musicInterval); musicInterval = null; }
+    }
+
+    function toggleMusic(on){
+      if (typeof on === 'undefined') state.musicOn = !state.musicOn;
+      else state.musicOn = !!on;
+      if (state.musicOn){ unlockAudio(); startMusic(); musicBtn && (musicBtn.textContent = 'Music: ON'); toast('MUSIC', 'Music enabled', 'good'); }
+      else { stopMusic(); musicBtn && (musicBtn.textContent = 'Music: OFF'); toast('MUSIC', 'Music muted', 'bad'); }
+    }
+
+    function duckMusic(ms=900){
+      if (!musicGain || !musicPlaying) return;
+      _musicDuckCount++;
+      const ctx = ensureAudio();
+      const now = ctx.currentTime;
+      musicGain.gain.cancelScheduledValues(now);
+      musicGain.gain.setValueAtTime(musicGain.gain.value || 0.28, now);
+      musicGain.gain.linearRampToValueAtTime(0.08, now + 0.02);
+      if (_musicRestoreTimeout) clearTimeout(_musicRestoreTimeout);
+      _musicRestoreTimeout = setTimeout(()=> {
+        const now2 = ctx.currentTime;
+        musicGain.gain.cancelScheduledValues(now2);
+        musicGain.gain.linearRampToValueAtTime(0.28, now2 + 0.18);
+        _musicDuckCount = Math.max(0, _musicDuckCount-1);
+      }, ms);
+    }
+
+    // quick musical flourish (arpeggio / lift) — used for perfects and wins
+    function musicFlourish(intensity=1.0){
+      if (!musicPlaying || !musicGain) return;
+      const ctx = ensureAudio();
+      const now = ctx.currentTime;
+      const base = Math.min(1.5, Math.max(0.6, intensity));
+      // small arpeggio
+      const freqs = [440, 550, 660].map(f => f * (1 + (Math.random()*0.02-0.01)));
+      freqs.forEach((f,i)=>{
+        const o = ctx.createOscillator(); o.type = i===1 ? 'sawtooth' : 'triangle';
+        const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, now + i*0.04);
+        g.gain.linearRampToValueAtTime(0.22 * base, now + i*0.04 + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + i*0.04 + 0.32);
+        o.frequency.setValueAtTime(f, now + i*0.04);
+        o.connect(g); g.connect(musicGain);
+        o.start(now + i*0.02); o.stop(now + i*0.36);
+      });
+      // brief duck so the flourish reads
+      try{ duckMusic(420); }catch(e){}
+    }
+
+    // short pulse bump to music gain for celebratory hits
+    function musicPulse(amt=0.12, ms=260){
+      if (!musicPlaying || !musicGain) return;
+      const ctx = ensureAudio();
+      const now = ctx.currentTime;
+      const cur = musicGain.gain.value || 0.28;
+      musicGain.gain.cancelScheduledValues(now);
+      musicGain.gain.setValueAtTime(cur, now);
+      musicGain.gain.linearRampToValueAtTime(Math.min(0.8, cur + amt), now + 0.02);
+      musicGain.gain.linearRampToValueAtTime(cur, now + ms/1000);
+    }
+
+    function unlockAudio(){
+      if (state.audioUnlocked) return;
+      try{
+        ensureAudio();
+        audioCtx.resume();
+        state.audioUnlocked = true;
+        sfx("ping");
+      }catch(e){}
+    }
+
+    function sfx(type="ping", intensity=1){
+      if (!state.audioUnlocked) return;
+      const ctx = ensureAudio();
+      const now = ctx.currentTime;
+
+      const gain = ctx.createGain();
+      gain.connect(masterGain);
+
+      const base = 0.24 * intensity;
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(base, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+
+      if (type === "ping"){ osc.frequency.setValueAtTime(880, now); osc.frequency.exponentialRampToValueAtTime(1240, now+0.08); }
+      if (type === "clink"){ osc.frequency.setValueAtTime(620, now); osc.frequency.exponentialRampToValueAtTime(420, now+0.07); }
+      if (type === "win"){ osc.frequency.setValueAtTime(660, now); osc.frequency.exponentialRampToValueAtTime(1320, now+0.12); }
+      if (type === "lose"){ osc.frequency.setValueAtTime(220, now); osc.frequency.exponentialRampToValueAtTime(140, now+0.14); }
+      if (type === "hype"){ osc.frequency.setValueAtTime(980, now); osc.frequency.exponentialRampToValueAtTime(1760, now+0.10); }
+
+      osc.connect(gain);
+      osc.start(now);
+      osc.stop(now + 0.24);
+
+      // tiny noise burst
+      if (type === "clink" || type === "win"){
+        const bufSize = 4096;
+        const buffer = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i=0;i<bufSize;i++) data[i] = (Math.random()*2-1) * 0.6;
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const ng = ctx.createGain();
+        ng.gain.setValueAtTime(0.0001, now);
+        ng.gain.exponentialRampToValueAtTime(0.14*intensity, now+0.01);
+        ng.gain.exponentialRampToValueAtTime(0.0001, now+0.10);
+        noise.connect(ng);
+        ng.connect(masterGain);
+        noise.start(now);
+        noise.stop(now+0.11);
+      }
+    }
+    function sfxCrowd(kind="win", intensity=1){
+      if (!state.audioUnlocked) return;
+      const ctx = ensureAudio();
+      const now = ctx.currentTime;
+
+      const bufSize = 4096;
+      const buffer = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i=0;i<bufSize;i++) data[i] = (Math.random()*2-1) * 0.7;
+
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+
+      const filt = ctx.createBiquadFilter();
+      filt.type = "bandpass";
+      filt.frequency.setValueAtTime(kind==="win" ? 650 : 380, now);
+      filt.frequency.exponentialRampToValueAtTime(kind==="win" ? 1400 : 260, now+0.18);
+
+      const g = ctx.createGain();
+      const base = (kind==="win" ? 0.16 : 0.12) * intensity;
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(base, now+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, now+0.22);
+
+      src.connect(filt);
+      filt.connect(g);
+      g.connect(masterGain);
+      src.start(now);
+      src.stop(now+0.24);
+    }
+
+    /* ============================
+       FX Canvas (ambient + bursts + shockwaves)
+    ============================ */
+    const FX = { dpr:1, w:0, h:0, ctx:null, ambient:[], parts:[], shockwaves:[] };
+
+    function fxResize(){
+      FX.dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      FX.w = Math.floor(innerWidth * FX.dpr);
+      FX.h = Math.floor(innerHeight * FX.dpr);
+      fxCanvas.width = FX.w;
+      fxCanvas.height = FX.h;
+      fxCanvas.style.width = innerWidth+"px";
+      fxCanvas.style.height = innerHeight+"px";
+      FX.ctx = fxCanvas.getContext("2d");
+
+      FX.ambient = [];
+      for (let i=0;i<44;i++){
+        FX.ambient.push({
+          x: randInt(0, FX.w),
+          y: randInt(0, FX.h),
+          r: randInt(1,3)*FX.dpr,
+          vx: (randInt(-10,10)/130)*FX.dpr,
+          vy: (randInt(-20,-6)/120)*FX.dpr,
+          a: randInt(10,28)/100
+        });
+      }
+      FX.shockwaves = [];
+    }
+    function fxBurst(x,y,kind="confetti",power=1){
+      const n = kind==="confetti" ? Math.floor(90*power) : Math.floor(30*power);
+      for (let i=0;i<n;i++){
+        const ang = Math.random()*Math.PI*2;
+        const sp = (kind==="confetti"? (18+Math.random()*46):(10+Math.random()*24)) * FX.dpr;
+        FX.parts.push({
+          x:x*FX.dpr, y:y*FX.dpr,
+          vx: Math.cos(ang)*sp/10,
+          vy: Math.sin(ang)*sp/10 - (kind==="confetti"? 3*FX.dpr : 1.5*FX.dpr),
+          g: (kind==="confetti"?0.24:0.16)*FX.dpr,
+          life: kind==="confetti" ? (60+Math.random()*60) : (35+Math.random()*35),
+          r: kind==="confetti" ? (2+Math.random()*2)*FX.dpr : (1+Math.random()*2)*FX.dpr,
+          hue: 160 + Math.random()*170,
+          rot: Math.random()*360,
+          vr: (Math.random()*2-1)*2.0,
+          kind
+        });
+      }
+    }
+    function fxShockwave(x,y,power=1){
+      FX.shockwaves.push({
+        x:x*FX.dpr, y:y*FX.dpr,
+        r: 0,
+        vr: (22 + power*18) * FX.dpr,
+        life: 26 + power*10,
+        a: 0.9
+      });
+    }
+    function fxTick(){
+      const ctx = FX.ctx;
+      if (!ctx) return requestAnimationFrame(fxTick);
+      ctx.clearRect(0,0,FX.w,FX.h);
+
+      // ambient sparkles
+      for (const a of FX.ambient){
+        a.x += a.vx; a.y += a.vy;
+        if (a.y < -20){ a.y = FX.h+20; a.x = randInt(0,FX.w); }
+        if (a.x < -20) a.x = FX.w+20;
+        if (a.x > FX.w+20) a.x = -20;
+
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(255,255,255,${a.a})`;
+        ctx.arc(a.x, a.y, a.r, 0, Math.PI*2);
+        ctx.fill();
+      }
+
+      // shockwaves
+      if (FX.shockwaves.length){
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        for (let i=FX.shockwaves.length-1;i>=0;i--){
+          const w = FX.shockwaves[i];
+          w.life -= 1;
+          w.r += w.vr;
+          w.a *= 0.92;
+
+          ctx.beginPath();
+          ctx.strokeStyle = `rgba(255,210,120,${Math.max(0,w.a)})`;
+          ctx.lineWidth = 3 * FX.dpr;
+          ctx.arc(w.x, w.y, w.r, 0, Math.PI*2);
+          ctx.stroke();
+
+          if (w.life <= 0 || w.a < 0.03) FX.shockwaves.splice(i,1);
+        }
+        ctx.restore();
+      }
+
+      // particles
+      for (let i=FX.parts.length-1;i>=0;i--){
+        const p = FX.parts[i];
+        p.life -= 1;
+        p.vy += p.g;
+        p.x += p.vx; p.y += p.vy;
+        p.rot += p.vr;
+
+        const alpha = Math.max(0, Math.min(1, p.life/80));
+
+        if (p.kind==="confetti"){
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot*Math.PI/180);
+          ctx.fillStyle = `hsla(${p.hue}, 85%, 65%, ${alpha})`;
+          ctx.fillRect(-p.r*1.4, -p.r*0.9, p.r*2.8, p.r*1.8);
+          ctx.restore();
+        }else{
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(255,210,120,${alpha*0.9})`;
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+          ctx.fill();
+        }
+
+        if (p.life <= 0 || p.y > FX.h+100) FX.parts.splice(i,1);
+      }
+
+      requestAnimationFrame(fxTick);
+    }
+
+    /* ============================
+       UI
+    ============================ */
+    function prizeText(p){ return p ? `${p.emoji} ${p.name}` : "None"; }
+
+    function renderHearts(){
+      heartsEl.innerHTML = "";
+      for (let i=0;i<state.maxAttempts;i++){
+        const h = document.createElement("div");
+        h.className = "heart" + (i < state.attempts ? " filled" : "");
+        heartsEl.appendChild(h);
+      }
+    }
+    function renderLadder(){
+      ladderEl.innerHTML = "";
+      const max = 12;
+      for (let lvl=1; lvl<=max; lvl++){
+        const tier = PRIZE_TIERS[tierForLevel(lvl)].name;
+        const item = document.createElement("div");
+        item.className = "ladderItem";
+        if (lvl === state.level) item.classList.add("current");
+        if (lvl === state.securedLevel) item.classList.add("secured");
+        item.innerHTML = `
+          <div>
+            <div class="lvl">Level ${lvl}</div>
+            <div class="tier">${tier}</div>
+          </div>
+          <div class="pill">${PRIZE_TIERS[tierForLevel(lvl)].options[0].emoji} e.g.</div>
+        `;
+        ladderEl.appendChild(item);
+      }
+    }
+    function callLockLabel(){
+      if (!state.call) return "—";
+      if (state.level <= 4) return "FREE";
+      return "LOCKED L5+";
+    }
+    function showBanner(text, sub=""){
+      banner.innerHTML = `
+        <div class="txt">${text}</div>
+        ${sub ? `<div class="sub">${sub}</div>` : ``}
+      `;
+      banner.classList.remove("show");
+      void banner.offsetWidth;
+      banner.classList.add("show");
+    }
+    // Show a big LEVEL popup (fast) then the task popup (longer)
+    function showLevelPopup(level, ms=700){
+      return new Promise(resolve => {
+        const root = $("arcadePopup");
+        if (!root) return resolve();
+        const el = document.createElement("div");
+        el.className = "arcPopup arcLevel";
+        el.textContent = `LEVEL ${level}`;
+        root.appendChild(el);
+        setTimeout(() => { el.remove(); resolve(); }, ms);
+      });
+    }
+
+    function showTaskPopup(obj, ms=2200){
+      return new Promise(resolve => {
+        const root = $("arcadePopup");
+        if (!root || !obj) return resolve();
+        const el = document.createElement("div");
+        el.className = "arcPopup arcTask";
+        el.innerHTML = `<div class="hdr">TASK TO LEVEL UP</div><div class="lbl">${obj.label}</div>`;
+        root.appendChild(el);
+        setTimeout(() => { el.remove(); resolve(); }, ms);
+      });
+    }
+
+    function showMiniBossPopup(ms=1400){
+      return new Promise(resolve => {
+        const root = $("arcadePopup");
+        if (!root) return resolve();
+        const el = document.createElement("div");
+        el.className = "arcPopup arcBoss";
+        el.innerHTML = `<div class="hdr">MINI-BOSS</div><div class="lbl">Fierce challenge: land ${state.miniBoss?.requiredInside || 3} coins INSIDE to defeat it!</div>`;
+        root.appendChild(el);
+
+        // Spawn FX: big confetti + shockwave + shake + brief hitstop
+        const rect = stoneZone.getBoundingClientRect();
+        fxBurst(rect.left+rect.width/2, rect.top+rect.height/2, "confetti", 1.6);
+        fxShockwave(rect.left+rect.width/2, rect.top+rect.height/2, 1.9);
+        sceneKick("shake");
+        hitStop(140);
+        sfx("hype", 1.1);
+        sfxCrowd("win", 1.05);
+
+        // Ensure HUD updates to show boss pill/badge
+        renderHUD();
+
+        setTimeout(() => { el.remove(); resolve(); }, ms);
+      });
+    }
+
+    // Countdown helper (3,2,1,TOSS)
+    function scenePulse(){
+      try{
+        sceneWrap.classList.add("pulse");
+        setTimeout(()=> sceneWrap.classList.remove("pulse"), 220);
+      }catch(e){}
+    }
+
+    function showCountdown(){
+      return new Promise(async (resolve) => {
+        const preferReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const root = $("arcadePopup");
+        if (!root) return resolve();
+
+        // Fast path if reduced motion
+        if (preferReduced){
+          // small feedback
+          sfx("ping", 0.9);
+          resolve();
+          return;
+        }
+
+        const overlay = document.createElement("div");
+        overlay.className = "countOverlay";
+
+        const nums = ["3","2","1","TOSS!"];
+        for (let i=0;i<nums.length;i++){
+          const el = document.createElement("div");
+          el.className = `countNum ${i===3? 'countToss':''}`;
+          el.textContent = nums[i];
+          overlay.appendChild(el);
+          root.appendChild(overlay);
+
+          // sound + pulse + speak (only for the TOSS one we speak full)
+          if (i < 3){
+            try{ sfx("ping", 0.9); }catch(e){}
+            scenePulse();
+            await new Promise(r => setTimeout(r, 520));
+          } else {
+            try{ sfx("hype", 1.05); sfxCrowd("win", 0.9); }catch(e){}
+            scenePulse();
+            speak("Toss!");
+            await new Promise(r => setTimeout(r, 680));
+          }
+
+          // remove the number before next
+          el.remove();
+        }
+        overlay.remove();
+        resolve();
+      });
+    }
+
+    // Show a streak progress popup (wins in a row progress)
+    function showStreakPopup(required, current=0, ms=1800){
+      return new Promise(resolve => {
+        const root = $("arcadePopup");
+        if (!root) return resolve();
+        const el = document.createElement("div");
+        el.className = "arcPopup arcTask";
+        el.innerHTML = `<div class="hdr">STREAK PROGRESS</div><div class="lbl">Wins in a row: ${current}/${required}</div>`;
+        root.appendChild(el);
+        setTimeout(() => { el.remove(); resolve(); }, ms);
+      });
+    }
+
+    function renderObjective(){
+      const o = state.objective;
+      if (!o){
+        objTag.textContent = "—";
+        objText.textContent = "Start the game to get an objective.";
+        objFill.style.width = "0%";
+        objSmall.textContent = "0/0";
+        return;
+      }
+      objTag.textContent = o.tag;
+      objText.textContent = o.label;
+      const pct = o.goal ? Math.floor((o.progress / o.goal) * 100) : 0;
+      objFill.style.width = `${clamp(pct,0,100)}%`;
+      objSmall.textContent = `${o.progress}/${o.goal}` + (o.done ? " ✅" : "");
+    }
+    function canPlayNow(){
+      return (state.phase === "trial" || state.phase === "real") && !state.tossing;
+    }
+    function renderHUD(){
+      pillPhase.textContent = `Phase: ${state.phase.toUpperCase()}`;
+      pillLevel.textContent = `Level: ${state.level}`;
+      pillAttempts.textContent = `Attempts: ${state.attempts}/${state.maxAttempts}`;
+      pillTimer.textContent = `Timer: ${state.timerLeft == null ? "—" : state.timerLeft.toFixed(1)+"s"}`;
+      pillCall.textContent = `Call: ${state.call ? state.call.toUpperCase() : "—"}`;
+      pillSafe.textContent = `SAFE: ${state.safeTokens}`;
+      pillWins.textContent = `Wins: ${state.wins}`;
+      pillScore.textContent = `Score: ${state.score}`;
+      pillCombo.textContent = `Combo: ${state.combo}`;
+      pillMulti.textContent = `x${state.mult.toFixed(1)}`;
+
+      callText.textContent = state.call ? state.call.toUpperCase() : "—";
+      lockText.textContent = callLockLabel();
+
+      securedText.textContent = prizeText(state.securedPrize);
+      streakText.textContent = String(state.level-1);
+      scoreText.textContent = String(state.score);
+
+      hypeFill.style.width = `${Math.floor(state.hype*100)}%`;
+      if (state.fever){
+        hypeHint.textContent = `FEVER MODE! You're hot — miss twice and you could CHOKE.`;
+      } else if (state.chokeActive){
+        hypeHint.textContent = `CHOKED: Next toss will be harder.`;
+      } else {
+        hypeHint.textContent = state.safeTokens > 0
+          ? `SAFE ready! You have ${state.safeTokens} token(s) for locked switching.`
+          : `Hit inner/bull to build hype + earn SAFE chances. Fever can CHOKE: miss twice while hot.`;
+      }
+
+      // Mini-boss HUD indicator
+      if (pillBoss){
+        if (state.miniBossActive){
+          pillBoss.style.display = "inline-flex";
+          pillBoss.textContent = `MINI-BOSS`;
+        } else {
+          pillBoss.style.display = "none";
+        }
+      }
+
+      if (bossBadge){
+        bossBadge.style.display = state.miniBossActive ? "block" : "none";
+      }
+
+      nextReward.textContent = PRIZE_TIERS[tierForLevel(state.level)].name;
+      diffText.textContent = difficultyLabel(state.level, state.allInActive || state.allInNext);
+
+      renderHearts();
+      renderLadder();
+      renderObjective();
+
+      tossBtn.disabled = !(canPlayNow() && state.call && !state.keepChangeLock);
+    }
+
+    /* ============================
+       Modal
+    ============================ */
+    function openModal({title, sub, body, foot, closable=true}){
+      mTitle.textContent = title || "";
+      mSub.textContent = sub || "";
+      mBody.innerHTML = "";
+      mFoot.innerHTML = "";
+
+      if (typeof body === "string") mBody.innerHTML = body;
+      else if (body) mBody.appendChild(body);
+
+      if (typeof foot === "string") mFoot.innerHTML = foot;
+      else if (foot) mFoot.appendChild(foot);
+
+      mClose.style.display = closable ? "inline-flex" : "none";
+      overlay.classList.add("show");
+    }
+    function closeModal(){ overlay.classList.remove("show"); }
+    mClose.addEventListener("click", closeModal);
+
+    /* ============================
+       Scene geometry
+    ============================ */
+    function sceneRects(){
+      const sceneRect = sceneWrap.getBoundingClientRect();
+      const stoneRect = stoneZone.getBoundingClientRect();
+      return { sceneRect, stoneRect };
+    }
+    function stoneCenterInScene(){
+      const { sceneRect, stoneRect } = sceneRects();
+      return {
+        x: (stoneRect.left - sceneRect.left) + stoneRect.width/2,
+        y: (stoneRect.top - sceneRect.top) + stoneRect.height/2,
+        w: stoneRect.width,
+        h: stoneRect.height
+      };
+    }
+
+    /* ============================
+       Variety Events (optional fun)
+    ============================ */
+    function rollEventForLevel(level){
+      if (level < 2) return null;
+      if (level % 2 !== 0) return null;
+
+      const events = [
+        { type:"double", label:"EVENT: DOUBLE SCORE!", sub:"Next win scores x2!", scoreMult:2, speedMult:1, illusionAdd:0, rewardBoost:false },
+        { type:"slowmo", label:"EVENT: SLOW-MO TARGET", sub:"Antugan slower but pressure stays!", scoreMult:1.2, speedMult:0.65, illusionAdd:0, rewardBoost:false },
+        { type:"mirage", label:"EVENT: MIRAGE STORM", sub:"More ghosts… reward boosted!", scoreMult:1.15, speedMult:1.0, illusionAdd:1, rewardBoost:true },
+      ];
+      return events[randInt(0, events.length-1)];
+    }
+    function showEventPopup(){
+      if (!state.event) return;
+      showBanner(state.event.label, state.event.sub);
+      toast("SPECIAL ROUND", state.event.sub, "good");
+      sfx("hype", 1.2);
+      speak(state.event.label.replace("EVENT:", "").trim());
+    }
+
+    /* ============================
+       Objectives (Mini Missions)
+    ============================ */
+    const OBJECTIVES = [
+      {
+        id:"inside2",
+        tag:"AIM",
+        label:"Land at least 2 coins INSIDE the antugan in one toss.",
+        goal: 1,
+        progressFrom: (ctx) => (ctx.counts.inside >= 2 ? 1 : 0),
+        reward: { type:"safe", amount: 1 }
+      },
+      {
+        id:"inner2_total",
+        tag:"PRECISION",
+        label:"Collect 2 INNER hits total this level.",
+        goal: 2,
+        progressFrom: (ctx) => ctx.counts.inner,
+        reward: { type:"score", amount: 300 }
+      },
+      {
+        id:"bull1",
+        tag:"BULL",
+        label:"Hit at least 1 BULLSEYE this level.",
+        goal: 1,
+        progressFrom: (ctx) => (ctx.counts.bull >= 1 ? 1 : 0),
+        reward: { type:"spin", amount: 1 }
+      },
+      {
+        id:"win1",
+        tag:"CLUTCH",
+        label:"Win 1 round this level.",
+        goal: 1,
+        progressFrom: (ctx) => (ctx.win ? 1 : 0),
+        reward: { type:"score", amount: 250 }
+      },
+    ];
+
+    function pickObjectiveForLevel(level){
+      let pool = OBJECTIVES.slice();
+      if (level <= 2) pool = pool.filter(o => o.id !== "bull1");
+      const base = pool[randInt(0, pool.length-1)];
+      return {
+        id: base.id,
+        tag: base.tag,
+        label: base.label,
+        goal: base.goal,
+        progress: 0,
+        done: false,
+        reward: {...base.reward}
+      };
+    }
+
+    function choke(){
+      // Player choked: remove hype, disable fever, penalty on next toss
+      state.hype = 0;
+      state.fever = false;
+      state.hypeMissCount = 0;
+      state.chokeActive = true;
+
+      const rect = stoneZone.getBoundingClientRect();
+      fxBurst(rect.left+rect.width/2, rect.top+rect.height/2, "spark", 1.1);
+      showBanner("CHOKE!", "Hype lost — next toss harder");
+      toast("CHOKE", "You choked under pressure — hype reset", "bad");
+      sfx("lose", 1.2);
+      sfxCrowd("lose", 1.05);
+      speak("Choke!");
+
+      // small visual shake to emphasize
+      sceneKick("shake");
+      renderHUD();
+    }
+
+    function applyObjectiveProgress(ctx){
+      const o = state.objective;
+      if (!o || o.done) return;
+
+      const tpl = OBJECTIVES.find(x => x.id === o.id);
+      if (!tpl) return;
+
+      const add = tpl.progressFrom(ctx);
+      if (!add) return;
+
+      const before = o.progress;
+      o.progress = clamp(o.progress + add, 0, o.goal);
+
+      if (o.progress !== before){
+        toast("TASK PROGRESS", `${o.progress}/${o.goal}`);
+        // mini badge toast and HUD refresh
+        renderHUD();
+        sfx("ping", 0.9);
+      }
+
+      if (o.progress >= o.goal && !o.done){
+        o.done = true;
+
+        // flashy completion
+        const rect = stoneZone.getBoundingClientRect();
+        fxBurst(rect.left + rect.width/2, rect.top + rect.height/2, "confetti", 1.35);
+        sfx("win", 1.25);
+        sfxCrowd("win", 1.1);
+
+        // Notify and encourage the player to Win to level up
+        toast("TASK COMPLETE ✅", `Win now to level up!`, "good");
+        showBanner("TASK COMPLETE!", `${o.tag} — ${o.label}`);
+        speak("Objective complete! Win now to level up!");
+
+        // Give the reward immediately (if applicable)
+        if (o.reward.type === "safe"){
+          state.safeTokens += o.reward.amount;
+          toast("OBJECTIVE REWARD", `+${o.reward.amount} SAFE token`, "good");
+        } else if (o.reward.type === "score"){
+          state.score += o.reward.amount;
+          toast("OBJECTIVE REWARD", `+${o.reward.amount} points`, "good");
+        } else if (o.reward.type === "spin"){
+          state.pendingSpin = true;
+          toast("OBJECTIVE REWARD", `JACKPOT SPIN unlocked!`, "good");
+        }
+
+        // Inform player about win-streak requirement for the current level
+        const req = streakRequirement(state.level);
+        toast("WIN STREAK", `Need ${req} win${req>1?"s":""} in a row to level up`, "good");
+        showStreakPopup(req, state.combo, 2000);
+
+        renderHUD();
+      }
+    }
+
+    /* ============================
+       Illusions
+    ============================ */
+    function rebuildIllusions(){
+      ghostTargets.innerHTML = "";
+      const add = state.event?.illusionAdd ? state.event.illusionAdd : 0;
+      const n = illusionCount(state.level, state.allInActive || state.allInNext) + add;
+      for (let i=0;i<n;i++){
+        const g = document.createElement("div");
+        g.className = "ghost";
+        g.style.opacity = (0.18 + i*0.05).toFixed(2);
+        ghostTargets.appendChild(g);
+      }
+
+      // Danger zones: update for level
+      rebuildDangerZones();
+    }
+
+    // Danger zones: roll and render arcs inside the antugan
+    function rollDangerZonesForLevel(level){
+      if (level < 3) return [];
+      const count = Math.min(3, 1 + Math.floor((level - 3) / 2));
+      const types = ["curse", "flip", "steal"];
+      const zones = [];
+      for (let i=0;i<count;i++){
+        const span = randInt(18, 42); // degrees of arc width
+        const start = randInt(0,359);
+        const speed = (Math.random() * 40 + 12) * (Math.random()<0.5 ? 1 : -1); // deg/sec
+        const type = types[randInt(0, types.length-1)];
+        const hue = type === "curse" ? "#ff6f88" : (type === "flip" ? "#8b6dff" : "#43e7ff");
+        zones.push({ start, span, speed, rotation: start, type, color: hue });
+      }
+      return zones;
+    }
+
+    function rebuildDangerZones(){
+      state.dangerZones = rollDangerZonesForLevel(state.level);
+      const root = $("dangerLayer");
+      if (!root) return;
+      root.innerHTML = "";
+      state.dangerZones.forEach((z, idx) => {
+        const el = document.createElement("div");
+        el.className = "dangerArc" + (z.span < 26 ? " small" : "");
+        el.style.setProperty("--span", z.span + "deg");
+        el.style.setProperty("--col", z.color);
+        el.dataset.idx = String(idx);
+        el.style.transform = `translate(-50%,-50%) rotate(${z.rotation}deg)`;
+        root.appendChild(el);
+      });
+
+      // Update zone button state (zones moved to popup)
+      const zoneB = $("zoneBtn");
+      if (zoneB){
+        if (state.dangerZones && state.dangerZones.length){
+          zoneB.textContent = `${state.dangerZones.length} ZONES`;
+          zoneB.disabled = false;
+        } else {
+          zoneB.textContent = `Zones`;
+          zoneB.disabled = true;
+        }
+      }
+    }
+
+    function updateDangerZones(dt){
+      if (!state.dangerZones || !state.dangerZones.length) return;
+      const root = $("dangerLayer");
+      state.dangerZones.forEach((z, idx) => {
+        z.rotation = (z.rotation + z.speed * dt) % 360;
+        const el = root.querySelector(`.dangerArc[data-idx='${idx}']`);
+        if (el) el.style.transform = `translate(-50%,-50%) rotate(${z.rotation}deg)`;
+      });
+    }
+
+    /* ============================
+       Antugan motion
+    ============================ */
+    function updateAntugan(dt){
+      const sc = stoneCenterInScene();
+      if (!sc.w) return;
+
+      const allIn = state.allInActive;
+      const spd = antuganSpeed(state.level, allIn);
+      const scl = antuganScale(state.level, allIn);
+
+      const evSpeed = state.event?.speedMult ? state.event.speedMult : 1;
+      const spdFinal = spd * evSpeed;
+
+      stoneStack.style.transform = `scale(${scl})`;
+
+      const rx = Math.min(90, 18 + state.level*6) * (allIn? 1.3 : 1);
+      const ry = Math.min(70, 14 + state.level*4) * (allIn? 1.2 : 1);
+
+      state.antugan.t += dt * spdFinal;
+
+      const t = state.antugan.t;
+      const ox = Math.sin(t*0.85) * rx + Math.sin(t*1.7) * (rx*0.25);
+      const oy = Math.cos(t*0.72) * ry + Math.cos(t*1.4) * (ry*0.22);
+
+      state.antugan.realX = sc.x + ox;
+      state.antugan.realY = sc.y + oy;
+
+      const ghosts = Array.from(ghostTargets.querySelectorAll(".ghost"));
+      ghosts.forEach((el, idx) => {
+        const ang = (idx+1) * (Math.PI*2/(ghosts.length+1));
+        const dx = Math.cos(ang) * (26 + idx*12);
+        const dy = Math.sin(ang) * (18 + idx*10);
+        el.style.left = `${(50 + (dx/sc.w)*100)}%`;
+        el.style.top  = `${(50 + (dy/sc.h)*100)}%`;
+        el.style.transform = `translate(-50%,-50%) rotateX(68deg) scale(${0.9 + idx*0.06})`;
+      });
+
+      // update danger zones rotation visuals
+      updateDangerZones(dt);
+
+      // IMPORTANT: shift only inner stack to avoid cropping
+      stoneStack.style.translate = `${ox*0.55}px ${oy*0.55}px`;
+    }
+
+    let lastT = performance.now();
+    function raf(t){
+      const dt = Math.min(0.033, (t-lastT)/1000);
+      lastT = t;
+
+      // hit-stop
+      if (state.hitStop > 0){
+        state.hitStop = Math.max(0, state.hitStop - dt);
+        requestAnimationFrame(raf);
+        return;
+      }
+
+      updateAntugan(dt);
+      requestAnimationFrame(raf);
+    }
+
+    /* ============================
+       Aim system (unchanged feel)
+    ============================ */
+    const aimState = { dragging:false, startX:0, startY:0, lastX:0, lastY:0 };
+
+    function setAimFromDrag(dx, dy){
+      const len = Math.hypot(dx, dy);
+      const power = clamp(len / 240, 0, 1);
+      const control = clamp(1 - Math.abs(power - 0.65) / 0.65, 0, 1);
+
+      const ox = clamp(dx, -220, 220) * 0.65;
+      const oy = clamp(dy, -220, 220) * 0.35;
+
+      let tx = state.antugan.realX + ox;
+      let ty = state.antugan.realY + oy;
+
+      if (power < 0.20) ty += (0.20 - power) * 140;
+      if (power > 0.90) ty -= (power - 0.90) * 90;
+
+      state.aim.has = true;
+      state.aim.targetX = tx;
+      state.aim.targetY = ty;
+      state.aim.power = power;
+      state.aim.control = control;
+
+      reticle.style.left = `${tx}px`;
+      reticle.style.top = `${ty}px`;
+      reticle.classList.add("show");
+
+      const { sceneRect } = sceneRects();
+      const handX = sceneRect.width/2;
+      const handY = sceneRect.height - 80;
+      const lx = tx - handX;
+      const ly = ty - handY;
+      const ang = Math.atan2(ly, lx);
+      const width = clamp(Math.hypot(lx, ly), 40, 560);
+
+      aimLine.style.left = `${handX}px`;
+      aimLine.style.top = `${handY}px`;
+      aimLine.style.width = `${width}px`;
+      aimLine.style.transform = `rotate(${ang}rad)`;
+      aimLine.classList.add("show");
+    }
+    function clearAimUI(){
+      reticle.classList.remove("show");
+      aimLine.classList.remove("show");
+    }
+
+    sceneWrap.addEventListener("pointerdown", (e) => {
+      unlockAudio();
+      if (!canPlayNow() || state.keepChangeLock) return;
+
+      // pause idle while dragging
+      stopCameraIdle();
+
+      sceneWrap.setPointerCapture(e.pointerId);
+      aimState.dragging = true;
+
+      const rect = sceneWrap.getBoundingClientRect();
+      aimState.startX = e.clientX - rect.left;
+      aimState.startY = e.clientY - rect.top;
+      aimState.lastX = aimState.startX;
+      aimState.lastY = aimState.startY;
+
+      setAimFromDrag(0,0);
+      renderHUD();
+    });
+
+    sceneWrap.addEventListener("pointermove", (e) => {
+      if (!aimState.dragging) return;
+      const rect = sceneWrap.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      aimState.lastX = x;
+      aimState.lastY = y;
+      setAimFromDrag(x - aimState.startX, y - aimState.startY);
+    });
+
+    sceneWrap.addEventListener("pointerup", async () => {
+      if (!aimState.dragging) return;
+      aimState.dragging = false;
+
+      const dx = aimState.lastX - aimState.startX;
+      const dy = aimState.lastY - aimState.startY;
+      const moved = Math.hypot(dx, dy);
+
+      if (moved > 24 && canPlayNow() && !state.keepChangeLock){
+        await doToss();
+      } else {
+        clearAimUI();
+      }
+
+      // restart idle with a small delay after interaction
+      setTimeout(()=> startCameraIdle(), 600);
+    });
+    sceneWrap.addEventListener("pointercancel", () => {
+      aimState.dragging = false;
+      clearAimUI();
+      setTimeout(()=> startCameraIdle(), 600);
+    });
+
+    /* ============================
+       Zone scoring
+    ============================ */
+    function zoneFromPoint(x, y){
+      const sc = stoneCenterInScene();
+      const rx = sc.w/2 * 0.86;
+      const ry = sc.h/2 * 0.72;
+      const dx = x - state.antugan.realX;
+      const dy = y - state.antugan.realY;
+      const d = Math.sqrt((dx*dx)/(rx*rx) + (dy*dy)/(ry*ry));
+      if (d <= 0.33) return { name:"Bullseye", inside:true, inner:true, bull:true };
+      if (d <= 0.66) return { name:"Inner", inside:true, inner:true, bull:false };
+      if (d <= 1.00) return { name:"Outer", inside:true, inner:false, bull:false };
+      return { name:"Edge", inside:false, inner:false, bull:false };
+    }
+    function countsFromZones(zs){
+      return {
+        inside: zs.filter(z => z.inside).length,
+        inner: zs.filter(z => z.inner).length,
+        bull: zs.filter(z => z.bull).length
+      };
+    }
+
+    function angleInArc(angle, start, span){
+      // normalize to [0,360)
+      const a = (angle + 360) % 360;
+      const s = (start + 360) % 360;
+      const diff = (a - s + 360) % 360;
+      return diff <= span;
+    }
+
+    // Checks land points against danger zones and applies effects. Returns an object with modified counts and flipped bits
+    function applyDangerEffects(land, bits, zones, counts){
+      if (!state.dangerZones || !state.dangerZones.length) return { bits, counts, cursed: [] };
+      const sc = stoneCenterInScene();
+      const cursed = [];
+      for (let i=0;i<land.length;i++){
+        const pt = land[i];
+        const dx = pt.x - state.antugan.realX;
+        const dy = pt.y - state.antugan.realY;
+        const ang = ((Math.atan2(dy, dx) * 180/Math.PI) + 360) % 360;
+
+        state.dangerZones.forEach((dz, idx) => {
+          const zStart = (dz.rotation) % 360;
+          const span = dz.span;
+          if (angleInArc(ang, zStart, span)){
+            // effect depending on type
+            if (dz.type === "curse"){
+              // coin counts as outside
+              if (zones[i].inside){
+                if (zones[i].inner) counts.inner = Math.max(0, counts.inner - 1);
+                if (zones[i].bull) counts.bull = Math.max(0, counts.bull - 1);
+                if (zones[i].inside) counts.inside = Math.max(0, counts.inside - 1);
+              }
+              cursed.push(i);
+              toast("DANGER", `Coin hit a crack — cursed!`, "bad");
+              showBanner("CRACK!", "Coin cursed — counts as outside");
+              sfx("lose", 0.95);
+            } else if (dz.type === "flip"){
+              // flip the bit for this coin
+              bits[i] = bits[i] === 1 ? 0 : 1;
+              toast("CRACK", `Coin flipped!`, "bad");
+              showBanner("CRACK!", "Coin flipped");
+              sfx("ping", 0.9);
+            } else if (dz.type === "steal"){
+              // steal a safe token if available
+              if (state.safeTokens > 0){
+                state.safeTokens = Math.max(0, state.safeTokens - 1);
+                toast("CRACK", `SAFE token stolen!`, "bad");
+                showBanner("CRACK!", "SAFE token stolen");
+                sfx("lose", 0.98);
+              } else {
+                // no safe tokens: slight penalty (small score loss)
+                state.score = Math.max(0, state.score - 80);
+                toast("CRACK", `Score stolen! -80`, "bad");
+                showBanner("CRACK!", "Score lost");
+                sfx("lose", 0.98);
+              }
+            }
+            const rect = stoneZone.getBoundingClientRect();
+            fxBurst(rect.left+pt.x, rect.top+pt.y, "spark", 0.8);
+          }
+        });
+      }
+      return { bits, counts, cursed };
+    }
+
+    /* ============================
+       Toss: 3 coins outcome
+    ============================ */
+    function outcomeSide(bits){
+      const heads = bits.filter(b => b===0).length;
+      return heads >= 2 ? "heads" : "tails";
+    }
+    function setCoinRotations(bits){
+      for (let i=0;i<3;i++){
+        const isTails = bits[i] === 1;
+        const turns = randInt(6, 10);
+        const rot = turns*360 + (isTails ? 180 : 0);
+        coins[i].style.setProperty("--rot", `${rot}deg`);
+      }
+    }
+
+    async function animateThrow(bits, scatterBase){
+      const { sceneRect } = sceneRects();
+      const startX = sceneRect.width/2;
+      const startY = sceneRect.height - 80;
+
+      const baseX = state.aim.has ? state.aim.targetX : state.antugan.realX;
+      const baseY = state.aim.has ? state.aim.targetY : state.antugan.realY;
+
+      const spreads = [-40, 0, 40];
+      const chaos = state.allInActive ? 1.55 : 1.0;
+      const scatter = (scatterBase + (1 - state.aim.control) * 55 + 10) * chaos;
+
+      setCoinRotations(bits);
+      const delays = [0, 90, 160];
+      for (let i=0;i<3;i++){
+        coins[i].style.setProperty("--delay", `${delays[i]}ms`);
+        coins[i].classList.remove("spinning");
+        void coins[i].offsetWidth;
+        coins[i].classList.add("spinning");
+      }
+
+      const land = [];
+      for (let i=0;i<3;i++){
+        const tt = Math.random()*Math.PI*2;
+        const r = Math.sqrt(Math.random()) * scatter;
+        const jx = Math.cos(tt)*r + spreads[i]*0.12;
+        const jy = Math.sin(tt)*r + randInt(-8,8);
+        land.push({ x: baseX + jx, y: baseY + jy });
+      }
+
+      for (let i=0;i<3;i++){
+        wraps[i].style.transform = `translate3d(${startX + spreads[i]}px, ${startY}px, 0) translate(-50%,-50%) scale(1.35)`;
+      }
+
+      const arc = 120 + state.aim.power * 90;
+      const anims = wraps.map((w,i) => {
+        const end = land[i];
+        const midX = (startX + end.x)/2 + randInt(-25,25);
+        const midY = Math.min(startY, end.y) - arc + randInt(-12,12);
+
+        return w.animate([
+          { transform:`translate3d(${startX + spreads[i]}px, ${startY}px, 0) translate(-50%,-50%) scale(1.35)` },
+          { transform:`translate3d(${midX}px, ${midY}px, 0) translate(-50%,-50%) scale(1.10)` },
+          { transform:`translate3d(${end.x}px, ${end.y}px, 0) translate(-50%,-50%) scale(0.90)` }
+        ], { duration: 900, delay: delays[i], easing:"cubic-bezier(.2,.8,.2,1)", fill:"forwards" });
+      });
+
+      await Promise.all(anims.map(a => a.finished.catch(()=>{})));
+
+      // landing impact
+      sfx("clink", state.allInActive ? 1.25 : 1.0);
+      hitStop(65);
+      sceneKick("kick");
+
+      wraps.forEach(w => {
+        w.classList.remove("landed");
+        void w.offsetWidth;
+        w.classList.add("landed");
+        setTimeout(() => w.classList.remove("landed"), 520);
+      });
+
+      // sparks + shockwaves
+      const rect = sceneWrap.getBoundingClientRect();
+      land.forEach(pt => {
+        fxBurst(rect.left+pt.x, rect.top+pt.y, "spark", 1.0);
+        fxShockwave(rect.left+pt.x, rect.top+pt.y, state.allInActive ? 1.2 : 1.0);
+      });
+
+      return land;
+    }
+
+    /* ============================
+       Timers
+    ============================ */
+    function stopMainTimer(){
+      if (state.timerId){ clearInterval(state.timerId); state.timerId=null; }
+    }
+    function startMainTimer(){
+      stopMainTimer();
+      if (state.timerLeft == null) return;
+
+      state.timerId = setInterval(() => {
+        state.timerLeft = Math.max(0, state.timerLeft - 0.1);
+        if (state.timerLeft <= 3.0 && state.timerLeft > 2.9){
+          showBanner("TIME LOW!", "Aim fast!");
+          sfx("hype", 1.1);
+          speak("Time low!");
+          toast("PRESSURE", "Time is running out!", "bad");
+        }
+        if (state.timerLeft <= 0){
+          stopMainTimer();
+          if (!state.tossing && (state.phase==="real" || state.phase==="trial")){
+            onFail("Time ran out!");
+          }
+        }
+        renderHUD();
+      }, 100);
+    }
+
+    function stopTrialTimer(){
+      if (state.trial.id){ clearInterval(state.trial.id); state.trial.id=null; }
+    }
+    function startTrialTimer(){
+      stopTrialTimer();
+      state.trial.id = setInterval(() => {
+        state.trial.timeLeft = Math.max(0, state.trial.timeLeft - 0.1);
+        if (state.trial.timeLeft <= 3.0 && state.trial.timeLeft > 2.9){
+          showBanner("TIME LOW!", "Trial ending!");
+          sfx("hype", 1.05);
+          speak("Time low!");
+        }
+        if (state.trial.timeLeft <= 0){
+          stopTrialTimer();
+          endTrial();
+        }
+        renderHUD();
+      }, 100);
+    }
+
+    /* ============================
+       Start flow
+    ============================ */
+    function startMenu(){
+      state.phase = "menu";
+      state.level = 1;
+      state.call = null;
+      state.securedPrize = null;
+      state.securedLevel = 0;
+      state.safeTokens = 0;
+      state.hype = 0;
+      state.wins = 0;
+      state.score = 0;
+      state.combo = 0;
+      state.mult = 1;
+
+      state.winsSinceSpin = 0;
+      state.pendingSpin = false;
+
+      state.objective = null;
+      state.event = null;
+
+      state.allInNext = false;
+      state.allInActive = false;
+
+      state.maxAttempts = attemptsForLevel(state.level);
+      state.attempts = state.maxAttempts;
+
+      state.timer = timerForLevel(state.level);
+      state.timerLeft = null;
+      stopMainTimer();
+
+      state.trial.tossLeft = 3;
+      state.trial.timeLeft = 25;
+      stopTrialTimer();
+
+      state.keepChangeLock = false;
+
+      rebuildIllusions();
+      renderHUD();
+      openIntroStep(0);
+    }
+
+    function openIntroStep(step){
+      if (step === 0){
+        openModal({
+          title:"Welcome",
+          sub:"Step-by-step instructions. Ready?",
+          body: `
+            <div class="note">
+              <b>How it works:</b><br>
+              • Drag to aim (reticle + power line). Release to toss.<br>
+              • You toss <b>3 coins</b> like hantak. Majority decides Heads/Tails.<br>
+              • The moving antugan + accuracy zones makes it harder than it looks.
+            </div>
+          `,
+          foot: (() => {
+            const f = document.createElement("div");
+            f.innerHTML = `<button class="btn primary" id="nextIntro">Agree & Next</button>`;
+            setTimeout(() => $("nextIntro").onclick = () => openIntroStep(1), 0);
+            return f;
+          })(),
+          closable:false
+        });
+        return;
+      }
+
+      if (step === 1){
+        openModal({
+          title:"Arcade Thrill",
+          sub:"What makes it exciting.",
+          body: `
+            <div class="note">
+              ✅ Attempts shrink: L1–2 (3 tries), L3+ (1 try + 10s).<br>
+              ✅ Every 3rd level is a MINI-BOSS: faster antugan, shorter timer, must land 3 INSIDE for a big reward.<br>
+              ✅ After every toss: KEEP/CHANGE (3s).<br>
+              ✅ L5+ locks your call: switch needs SAFE or ALL-IN.<br>
+              ✅ Every 3 wins: JACKPOT SPIN bonus.
+            </div>
+          `,
+          foot: (() => {
+            const f = document.createElement("div");
+            f.innerHTML = `<button class="btn" id="backIntro">Back</button>
+                           <button class="btn primary" id="nextIntro2">Agree & Next</button>`;
+            setTimeout(() => {
+              $("backIntro").onclick = () => openIntroStep(0);
+              $("nextIntro2").onclick = () => openIntroStep(2);
+            }, 0);
+            return f;
+          })(),
+          closable:false
+        });
+        return;
+      }
+
+      openModal({
+        title:"Start",
+        sub:"Choose Trial (practice) or jump into the Real Game.",
+        body: `
+          <div class="note">
+            <b>Trial:</b> 3 tosses + 25 seconds. Practice aiming. No secured prizes.<br>
+            <b>Real:</b> Ladder begins now (objectives + jackpot spins).
+          </div>
+        `,
+        foot: (() => {
+          const f = document.createElement("div");
+          f.innerHTML = `
+            <button class="btn" id="trialBtn">Play Trial</button>
+            <button class="btn primary" id="realBtn">Start Real</button>
+          `;
+          setTimeout(() => {
+            $("trialBtn").onclick = () => { closeModal(); startPickCall(() => startTrial()); };
+            $("realBtn").onclick  = () => { closeModal(); startPickCall(() => startReal()); };
+          }, 0);
+          return f;
+        })(),
+        closable:false
+      });
+    }
+
+    function startPickCall(onDone){
+      const body = document.createElement("div");
+      body.innerHTML = `
+        <div class="pickGrid">
+          <div class="pickCard" id="pickHeads">
+            <div class="miniCoin">
+              <div class="coinWrap">
+                <div class="coin" style="--rot:0deg;">
+                  <div class="face heads">
+                    <div class="shine"></div>
+                    <svg viewBox="0 0 100 100" role="img" aria-label="Heads">
+                      <circle class="engrave" cx="50" cy="50" r="40" fill="none"></circle>
+                      <path class="engrave" d="M52 30c8 0 14 6 14 14s-6 14-14 14-14-6-14-14 6-14 14-14z"/>
+                      <path class="engrave" d="M26 78c6-16 18-24 28-24s22 8 28 24" fill="none"/>
+                    </svg>
+                  </div>
+                  <div class="face tails">
+                    <div class="shine"></div>
+                    <svg viewBox="0 0 100 100" role="img" aria-label="Tails">
+                      <circle class="engrave" cx="50" cy="50" r="40" fill="none"></circle>
+                      <path class="engrave" d="M50 26l7 15 16 2-12 11 3 16-14-8-14 8 3-16-12-11 16-2z"/>
+                      <path class="engrave" d="M34 70c4 6 10 10 16 10s12-4 16-10" fill="none" opacity=".8"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="pickLabel">HEADS</div>
+          </div>
+
+          <div class="pickCard" id="pickTails">
+            <div class="miniCoin">
+              <div class="coinWrap">
+                <div class="coin" style="--rot:180deg;">
+                  <div class="face heads">
+                    <div class="shine"></div>
+                    <svg viewBox="0 0 100 100" role="img" aria-label="Heads">
+                      <circle class="engrave" cx="50" cy="50" r="40" fill="none"></circle>
+                      <path class="engrave" d="M52 30c8 0 14 6 14 14s-6 14-14 14-14-6-14-14 6-14 14-14z"/>
+                      <path class="engrave" d="M26 78c6-16 18-24 28-24s22 8 28 24" fill="none"/>
+                    </svg>
+                  </div>
+                  <div class="face tails">
+                    <div class="shine"></div>
+                    <svg viewBox="0 0 100 100" role="img" aria-label="Tails">
+                      <circle class="engrave" cx="50" cy="50" r="40" fill="none"></circle>
+                      <path class="engrave" d="M50 26l7 15 16 2-12 11 3 16-14-8-14 8 3-16-12-11 16-2z"/>
+                      <path class="engrave" d="M34 70c4 6 10 10 16 10s12-4 16-10" fill="none" opacity=".8"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="pickLabel">TAILS</div>
+          </div>
+        </div>
+      `;
+
+      let chosen = "heads";
+
+      openModal({
+        title:"Pick Your Call",
+        sub:"Choose one before the run begins.",
+        body,
+        foot: (() => {
+          const f = document.createElement("div");
+          f.innerHTML = `<button class="btn primary" id="confirmCall">Confirm</button>`;
+          setTimeout(() => {
+            const ph = $("pickHeads");
+            const pt = $("pickTails");
+
+            function setActive(which){
+              chosen = which;
+              ph.classList.toggle("active", which==="heads");
+              pt.classList.toggle("active", which==="tails");
+            }
+            setActive("heads");
+
+            ph.onclick = () => { unlockAudio(); setActive("heads"); sfx("ping"); };
+            pt.onclick = () => { unlockAudio(); setActive("tails"); sfx("ping"); };
+
+            $("confirmCall").onclick = () => {
+              state.call = chosen;
+              renderHUD();
+              closeModal();
+              sfx("win", 1.05);
+              showBanner("LOCKED IN!", `${state.call.toUpperCase()} selected`);
+              speak("Locked in!");
+              onDone?.();
+            };
+          }, 0);
+          return f;
+        })(),
+        closable:false
+      });
+    }
+
+    function startTrial(){
+      state.phase = "trial";
+      state.trial.tossLeft = 3;
+      state.trial.timeLeft = 25;
+      state.timerLeft = null;
+      stopMainTimer();
+      startTrialTimer();
+      rebuildIllusions();
+      state.objective = pickObjectiveForLevel(1);
+      renderHUD();
+      showBanner("TRIAL MODE", "3 tosses • 25s");
+      speak("Trial mode");
+    }
+    function endTrial(){
+      stopTrialTimer();
+      openModal({
+        title:"Trial Complete",
+        sub:"Ready to start the Real Game?",
+        body: `<div class="note">Trial ended. Now start the ladder run.</div>`,
+        foot: (() => {
+          const f = document.createElement("div");
+          f.innerHTML = `<button class="btn primary" id="startReal">Start Real Game</button>`;
+          setTimeout(() => $("startReal").onclick = () => { closeModal(); startReal(); }, 0);
+          return f;
+        })(),
+        closable:false
+      });
+    }
+
+    function startReal(){
+      state.phase = "real";
+      state.level = 1;
+      state.wins = 0;
+      state.score = 0;
+      state.securedPrize = null;
+      state.securedLevel = 0;
+      state.safeTokens = 0;
+      state.hype = 0;
+      state.combo = 0;
+      state.mult = 1;
+
+      state.winsSinceSpin = 0;
+      state.pendingSpin = false;
+
+      state.allInNext = false;
+      state.allInActive = false;
+
+      state.maxAttempts = attemptsForLevel(state.level);
+      state.attempts = state.maxAttempts;
+
+      state.timer = timerForLevel(state.level);
+      state.timerLeft = state.timer;
+      stopTrialTimer();
+
+      state.event = rollEventForLevel(state.level);
+      if (state.event) showEventPopup();
+
+      state.objective = pickObjectiveForLevel(state.level);
+
+      rebuildIllusions();
+      renderHUD();
+
+      if (state.timerLeft != null) startMainTimer();
+      showBanner("REAL RUN!", "Aim carefully.");
+      speak("Real game!");
+      if (state.musicOn) startMusic();
+
+      // show the level popup and the task to level up (and mini-boss notice when present)
+      setTimeout(async () => {
+        await showLevelPopup(state.level, 700);
+        if (isMiniBoss(state.level)) await showMiniBossPopup();
+        await showTaskPopup(state.objective, 2200);
+      }, 420);
+    }
+
+    /* ============================
+       Keep/Change popup
+    ============================ */
+    function openKeepChangePopup(lastOutcomeText){
+      state.keepChangeLock = true;
+      renderHUD();
+
+      let t = 3.0;
+      let id = null;
+
+      const body = document.createElement("div");
+      body.innerHTML = `
+        <div class="keepRow">
+          <div>
+            <div class="k">Result</div>
+            <div class="bigCall">${lastOutcomeText}</div>
+          </div>
+          <div class="timer" id="kcTimer">3.0s</div>
+        </div>
+
+        <div class="note">
+          <b>KEEP</b> to continue with ${state.call.toUpperCase()}<br>
+          <b>CHANGE</b> to switch (free until Level 4).<br>
+          Level 5+ needs <b>SAFE</b> token or <b>ALL-IN</b>.
+        </div>
+      `;
+
+      const foot = document.createElement("div");
+      foot.innerHTML = `
+        <button class="btn" id="kcKeep">KEEP</button>
+        <button class="btn primary" id="kcChange">CHANGE</button>
+      `;
+
+      function closeKC(){
+        if (id) clearInterval(id);
+        closeModal();
+        state.keepChangeLock = false;
+        renderHUD();
+      }
+
+      openModal({
+        title:"Keep or Change?",
+        sub:"You have 3 seconds.",
+        body,
+        foot,
+        closable:false
+      });
+
+      const kcTimer = () => $("kcTimer");
+      id = setInterval(() => {
+        t = Math.max(0, t - 0.1);
+        if (kcTimer()) kcTimer().textContent = `${t.toFixed(1)}s`;
+        if (t <= 0){
+          clearInterval(id);
+          closeKC();
+        }
+      }, 100);
+
+      $("kcKeep").onclick = () => { unlockAudio(); sfx("ping"); closeKC(); };
+
+      $("kcChange").onclick = () => {
+        unlockAudio();
+        sfx("ping");
+        if (state.level <= 4){
+          state.call = (state.call === "heads" ? "tails" : "heads");
+          showBanner("CHANGED!", `Now ${state.call.toUpperCase()}`);
+          speak("Changed!");
+          closeKC();
+          return;
+        }
+        openLockedSwitchChooser(closeKC);
+      };
+    }
+
+    function openLockedSwitchChooser(onCloseKC){
+      const hasSecured = !!state.securedPrize;
+      const body = document.createElement("div");
+      body.innerHTML = `
+        <div class="note">
+          <b>LOCKED (Level 5+)</b><br>
+          Switching requires:
+          <ul style="margin:10px 0 0 18px; line-height:1.6;">
+            <li><b>SAFE</b> token (you have: ${state.safeTokens})</li>
+            <li><b>ALL-IN</b> (sacrifice secured prize) — chaos difficulty but boosted reward</li>
+          </ul>
+        </div>
+        <div class="note">
+          <b>Secured:</b> ${prizeText(state.securedPrize)} ${hasSecured ? "" : "(none)"}
+        </div>
+      `;
+
+      const foot = document.createElement("div");
+      foot.innerHTML = `
+        <button class="btn" id="useSafe" ${state.safeTokens>0 ? "" : "disabled"}>Use SAFE</button>
+        <button class="btn primary" id="goAllIn" ${hasSecured ? "" : "disabled"}>ALL-IN</button>
+      `;
+
+      openModal({
+        title:"Switch Locked",
+        sub:"Choose how to switch at Level 5+.",
+        body,
+        foot,
+        closable:false
+      });
+
+      $("useSafe").onclick = () => {
+        if (state.safeTokens <= 0) return;
+        state.safeTokens -= 1;
+        state.call = (state.call === "heads" ? "tails" : "heads");
+        showBanner("SAFE SWITCH!", `Now ${state.call.toUpperCase()}`);
+        sfx("win", 1.1);
+        speak("Safe switch!");
+        onCloseKC?.();
+      };
+
+      $("goAllIn").onclick = () => {
+        if (!state.securedPrize) return;
+        const lost = state.securedPrize;
+        state.securedPrize = null;
+        state.securedLevel = 0;
+        state.allInNext = true;
+        showBanner("ALL IN!!", `Sacrificed ${lost.emoji} ${lost.name}`);
+        sfx("hype", 1.25);
+        sfxCrowd("win", 1.1);
+        speak("All in!");
+        state.call = (state.call === "heads" ? "tails" : "heads");
+        rebuildIllusions();
+        onCloseKC?.();
+      };
+    }
+
+    /* ============================
+       Hype / SAFE
+    ============================ */
+    function addHypeFromLanding(counts){
+      const inc = (counts.inner*0.12) + (counts.bull*0.16);
+      state.hype = clamp(state.hype + inc, 0, 1);
+
+      if (state.hype >= 1.0){
+        state.safeTokens += 1;
+        state.hype = 0.25;
+        showBanner("SAFE EARNED!", "+1 SAFE token");
+        toast("SAFE", "+1 token earned", "good");
+        sfx("win", 1.2);
+        speak("Safe token!");
+      }
+    }
+
+    /* ============================
+       Combo / Multiplier
+    ============================ */
+    function updateCombo(win){
+      if (win){
+        state.combo += 1;
+        state.mult = Math.min(3.0, 1 + state.combo * 0.15);
+        toast("COMBO!", `x${state.combo} • Mult x${state.mult.toFixed(1)}`, "good");
+      } else {
+        if (state.combo >= 3) toast("COMBO BROKE!", "Back to x1.0", "bad");
+        state.combo = 0;
+        state.mult = 1;
+      }
+    }
+
+    /* ============================
+       JACKPOT WHEEL (Every 3 wins + objective spin rewards)
+    ============================ */
+    const WHEEL_PRIZES = [
+      { label:"+1 SAFE", type:"safe", amount:1 },
+      { label:"+500 SCORE", type:"score", amount:500 },
+      { label:"NEXT WIN BOOST", type:"boost", amount:1 },
+      { label:"+1 ATTEMPT", type:"attempt", amount:1 },
+      { label:"+3s TIMER", type:"time", amount:3 },
+      { label:"MIRAGE BONUS", type:"mirage", amount:1 },
+    ];
+
+    function applyWheelPrize(p){
+      if (!p) return;
+      if (p.type==="safe"){
+        state.safeTokens += p.amount;
+        toast("JACKPOT!", p.label, "good");
+        showBanner("JACKPOT!", p.label);
+        speak("Jackpot!");
+      }
+      if (p.type==="score"){
+        state.score += p.amount;
+        toast("JACKPOT!", p.label, "good");
+        showBanner("JACKPOT!", p.label);
+        speak("Jackpot!");
+      }
+      if (p.type==="boost"){
+        state.event = { type:"wheelboost", label:"BONUS: REWARD BOOST", sub:"Next win reward boosted!", scoreMult:1.25, speedMult:1, illusionAdd:0, rewardBoost:true };
+        toast("BONUS!", "Next win boosted!", "good");
+        showBanner("BONUS!", "Next win boosted!");
+        speak("Bonus round!");
+      }
+      if (p.type==="attempt"){
+        state.attempts = clamp(state.attempts + p.amount, 0, state.maxAttempts + 2);
+        state.maxAttempts = Math.max(state.maxAttempts, state.attempts);
+        toast("BONUS!", p.label, "good");
+        showBanner("BONUS!", p.label);
+        speak("Extra attempt!");
+      }
+      if (p.type==="time"){
+        if (state.timerLeft != null){
+          state.timerLeft += p.amount;
+          toast("BONUS!", p.label, "good");
+          showBanner("BONUS!", p.label);
+          speak("Extra time!");
+        }else{
+          state.score += 120;
+          toast("BONUS!", "+120 SCORE", "good");
+        }
+      }
+      if (p.type==="mirage"){
+        state.event = { type:"mirage", label:"EVENT: MIRAGE STORM", sub:"More ghosts… reward boosted!", scoreMult:1.15, speedMult:1.0, illusionAdd:1, rewardBoost:true };
+        showEventPopup();
+        rebuildIllusions();
+      }
+
+      renderHUD();
+    }
+
+    function openJackpotWheel(reason="Every 3 wins bonus!"){
+      state.keepChangeLock = true;
+      renderHUD();
+
+      let spinning = false;
+      let rot = 0;
+
+      const body = document.createElement("div");
+      body.innerHTML = `
+        <div class="wheelRow">
+          <div class="wheelWrap">
+            <div class="wheelPointer"></div>
+            <div class="wheel" id="wheel"></div>
+            <div class="wheelCenter">SPIN</div>
+          </div>
+
+          <div class="wheelLegend">
+            <div class="note">
+              <b>JACKPOT SPIN</b><br>
+              ${reason}
+            </div>
+            <div class="note">
+              Possible rewards:
+              <ul>
+                <li>+1 SAFE</li>
+                <li>+500 Score</li>
+                <li>Next Win Boost</li>
+                <li>+1 Attempt</li>
+                <li>+3s Timer</li>
+                <li>Mirage Bonus</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const foot = document.createElement("div");
+      foot.innerHTML = `
+        <button class="btn primary" id="spinBtn">SPIN NOW</button>
+      `;
+
+      openModal({
+        title:"JACKPOT!",
+        sub:"Spin the wheel for a bonus!",
+        body,
+        foot,
+        closable:false
+      });
+
+      const wheel = () => $("wheel");
+
+      $("spinBtn").onclick = () => {
+        if (spinning) return;
+        spinning = true;
+
+        unlockAudio();
+        sfx("hype", 1.25);
+        sfxCrowd("win", 1.15);
+        speak("Spin!");
+
+        const prizeIndex = randInt(0, WHEEL_PRIZES.length-1);
+        const slice = 360 / WHEEL_PRIZES.length;
+
+        const targetMid = prizeIndex * slice + slice/2;
+        const spins = randInt(6, 10) * 360;
+        rot = spins + (360 - targetMid);
+
+        wheel().style.setProperty("--wheelRot", `${rot}deg`);
+
+        setTimeout(() => {
+          const prize = WHEEL_PRIZES[prizeIndex];
+          applyWheelPrize(prize);
+
+          toast("WHEEL RESULT", prize.label, "good");
+          showBanner("WHEEL!", prize.label);
+
+          setTimeout(() => {
+            closeModal();
+            state.keepChangeLock = false;
+            renderHUD();
+          }, 700);
+        }, 1950);
+      };
+    }
+
+    /* ============================
+       Win/Loss
+    ============================ */
+    async function levelUp(boosted=false){
+      const ev = state.event || { scoreMult:1, rewardBoost:false };
+
+      const prize = pickPrizeForLevel(state.level, boosted || ev.rewardBoost);
+      state.securedPrize = prize;
+      state.securedLevel = state.level;
+
+      state.wins += 1;
+      state.winsSinceSpin += 1;
+
+      const base = 260 + Math.floor(state.level*45);
+      const allInBonus = boosted ? 420 : 0;
+      const comboBonus = Math.floor(160 * (state.mult - 1));
+      const eventBonus = Math.floor(120 * (ev.scoreMult - 1));
+      const add = Math.floor((base + allInBonus + comboBonus + eventBonus) * state.mult * ev.scoreMult);
+      state.score += add;
+
+      toast("LEVEL UP!", `+${add} points • Combo x${state.combo} • x${state.mult.toFixed(1)}`, "good");
+
+      const rect = stoneZone.getBoundingClientRect();
+      fxBurst(rect.left+rect.width/2, rect.top+rect.height/2, "confetti", boosted?1.35:1.1);
+
+      showBanner(boosted ? "ALL-IN WIN!" : "LEVEL UP!", `Secured: ${prize.emoji} ${prize.name}`);
+      sfx("win", boosted ? 1.35 : 1.15);
+      sfxCrowd("win", boosted ? 1.25 : 1.05);
+      speak("Level up!");
+
+      hitStop(70);
+      sceneKick("kick");
+
+      // increase level and refresh HUD first so player sees new values
+      state.level += 1;
+
+      // mark mini-boss if this level is a mini-boss
+      state.miniBossActive = isMiniBoss(state.level);
+      state.miniBoss = state.miniBossActive ? { requiredInside: 3, reward: { type:"score", amount: 600 } } : null;
+
+      state.maxAttempts = attemptsForLevel(state.level);
+      state.attempts = state.maxAttempts;
+
+      state.timer = timerForLevel(state.level);
+      state.timerLeft = state.timer;
+
+      state.allInActive = false;
+      state.allInNext = false;
+
+      state.objective = pickObjectiveForLevel(state.level);
+
+      state.event = rollEventForLevel(state.level);
+      if (state.event) showEventPopup();
+
+      rebuildIllusions();
+      renderHUD();
+
+      // show the arcade sequence: LEVEL X (quick) then TASK popup (longer)
+      await showLevelPopup(state.level, 700); // show the level we just secured
+      if (state.miniBossActive) await showMiniBossPopup();
+      await showTaskPopup(state.objective, 2200);
+
+      stopMainTimer();
+      if (state.phase==="real" && state.timerLeft != null) startMainTimer();
+
+      openModal({
+        title:"WIN!",
+        sub:"Your current run status:",
+        body: `
+          <div class="note">
+            <b>Wins:</b> ${state.wins}<br>
+            <b>Level:</b> ${state.level}<br>
+            <b>Score:</b> ${state.score}<br>
+            <b>Secured:</b> ${prizeText(state.securedPrize)}
+          </div>
+        `,
+        foot: (() => {
+          const f = document.createElement("div");
+          f.innerHTML = `<button class="btn primary" id="contWin">Continue</button>`;
+          setTimeout(()=> $("contWin").onclick = () => closeModal(), 0);
+          return f;
+        })(),
+        closable:false
+      });
+
+      if (state.winsSinceSpin >= 3){
+        state.winsSinceSpin = 0;
+        setTimeout(() => openJackpotWheel("Every 3 wins bonus!"), 450);
+      } else if (state.pendingSpin){
+        state.pendingSpin = false;
+        setTimeout(() => openJackpotWheel("Objective bonus spin!"), 450);
+      }
+    }
+
+    function onFail(reason="Missed!"){
+      if (state.tossing) return;
+
+      if (state.phase === "trial"){
+        state.trial.tossLeft = Math.max(0, state.trial.tossLeft - 1);
+        showBanner("MISS", reason);
+        toast("TRIAL", reason, "bad");
+        sfx("lose", 1.0);
+        sfxCrowd("lose", 0.95);
+        speak("Miss!");
+        sceneKick("shake");
+        renderHUD();
+
+        if (state.trial.tossLeft <= 0 || state.trial.timeLeft <= 0){
+          endTrial();
+        }
+        return;
+      }
+
+      state.attempts = Math.max(0, state.attempts - 1);
+      showBanner("MISS", reason);
+      toast("MISS", `${reason} • Attempts ${state.attempts}/${state.maxAttempts}`, "bad");
+      sfx("lose", 1.0);
+      sfxCrowd("lose", 0.95);
+      speak("Miss!");
+      sceneKick("shake");
+
+      // Hype backfire logic: if hype is high, count misses and choke on the second miss
+      if (state.phase === "real" && isHypeHigh()){
+        state.hypeMissCount = (state.hypeMissCount || 0) + 1;
+        toast("PRESSURE", `Missed under pressure (${state.hypeMissCount}/2)`, "bad");
+        if (state.hypeMissCount >= 2){
+          choke();
+        }
+      } else {
+        // reset the counter if the miss happened while hype was low
+        state.hypeMissCount = 0;
+      }
+
+      renderHUD();
+
+      // If they still have an active task this level, show it again to remind the player
+      if (state.phase === "real" && state.objective && !state.objective.done){
+        // small delay so banner shows first
+        setTimeout(() => { showTaskPopup(state.objective, 1600); }, 450);
+      }
+
+      if (state.attempts <= 0){
+        endRunFail(reason);
+      } else {
+        stopMainTimer();
+        if (state.timer != null){
+          state.timerLeft = state.timer;
+          startMainTimer();
+        }
+      }
+    }
+
+    function endRunFail(reason){
+      stopMainTimer();
+      const kept = state.securedPrize;
+
+      stopMusic();
+      sfx("lose", 1.0);
+      sfxCrowd("lose", 0.95);
+      showBanner("GAME OVER!", reason);
+
+      openModal({
+        title:"RUN ENDED",
+        sub: "Results",
+        body: `
+          <div class="note">
+            <b>Reason:</b> ${reason}<br><br>
+            <b>Wins:</b> ${state.wins}<br>
+            <b>Score:</b> ${state.score}<br><br>
+            <b>Secured Prize:</b> ${kept ? prizeText(kept) : "None"}<br>
+            ${kept ? "You can stop & claim it." : "You have no secured prize to claim."}
+          </div>
+        `,
+        foot: (() => {
+          const f = document.createElement("div");
+          f.innerHTML = `
+            <button class="btn" id="restartRun">Play Again</button>
+            <button class="btn primary" id="claimNow" ${kept ? "" : "disabled"}>Claim</button>
+          `;
+          setTimeout(() => {
+            $("restartRun").onclick = () => { closeModal(); startMenu(); };
+            $("claimNow").onclick = () => {
+              if (!state.securedPrize) return;
+              closeModal();
+              showBanner("CLAIMED!", prizeText(state.securedPrize));
+              toast("CLAIMED", prizeText(state.securedPrize), "good");
+              sfx("win", 1.2);
+              sfxCrowd("win", 1.1);
+              speak("Claimed!");
+            };
+          }, 0);
+          return f;
+        })(),
+        closable:false
+      });
+
+      speak("Game over!");
+    }
+
+    /* ============================
+       Main Toss
+    ============================ */
+    async function doToss(){
+      if (state.tossing || state.keepChangeLock) return;
+      if (!state.call) return;
+      if (!(state.phase==="trial" || state.phase==="real")) return;
+
+      unlockAudio();
+
+      state.tossing = true;
+      clearAimUI();
+
+      state.allInActive = !!state.allInNext;
+      rebuildIllusions();
+      renderHUD();
+
+      // show countdown before the toss
+      await showCountdown();
+      // toss accent + subtle music pulse
+      try{ sfx("clink", 0.95); if (musicPlaying) musicPulse(0.04, 120); }catch(e){}
+
+      if (state.phase==="real") stopMainTimer();
+
+      let bits = [randBit(), randBit(), randBit()];
+
+      let scatterBase = 16 + Math.min(36, state.level*2.4);
+      // If choked, make the next toss harder by adding extra scatter
+      if (state.chokeActive){
+        scatterBase *= 1.45;
+        // small visual reminder
+        showBanner("CHOKE PENALTY", "Next toss chaotic!");
+        sfx("lose", 0.95);
+        state.chokeActive = false; // only apply once
+      }
+
+      // If pressure (from a previous sloppy land) is active, apply scatter/time penalty
+      if (state.pressureActive){
+        scatterBase *= 1.35;
+        showBanner("PRESSURE", "Sloppy landing penalty — chaotic toss!");
+        sfx("lose", 0.9);
+        state.pressureActive = false; // apply once
+      }
+      const powerSweet = Math.abs(state.aim.power - 0.65);
+      if (powerSweet < 0.16) scatterBase *= 0.85;
+      if (state.allInActive) scatterBase *= 1.25;
+
+      const land = await animateThrow(bits, scatterBase);
+
+      // Preliminary scoring zones
+      let zones = land.map(pt => zoneFromPoint(pt.x, pt.y));
+      let counts = countsFromZones(zones);
+
+      // Per-coin landing feedback: pings and flashes (bullseye stronger)
+      for (let i=0;i<zones.length;i++){
+        const z = zones[i];
+        try{ // best-effort audio/visual
+          if (z.bull){ sfx("win", 0.95); wraps[i].classList.add("bullFlash"); setTimeout(()=>wraps[i].classList.remove("bullFlash"), 520); }
+          else { sfx("ping", 0.6); wraps[i].classList.add("coinFlash"); setTimeout(()=>wraps[i].classList.remove("coinFlash"), 360); }
+        }catch(e){}
+      }
+
+      // Danger zones may affect coin state (curse/flip/steal) — apply and mutate bits/counts
+      const dangerRes = applyDangerEffects(land, bits, zones, counts);
+      bits = dangerRes.bits;
+      counts = dangerRes.counts;
+
+      // Recompute outcome after any flips
+      const outcome = outcomeSide(bits);
+
+      // --- PERFECT / SLOPPY LAND mechanics ---
+      // Perfect Land: all 3 coins INSIDE → time / SAFE / score bonus
+      if (counts.inside === 3){
+        const rect = stoneZone.getBoundingClientRect();
+        // grant time if using timer
+        if (state.timerLeft != null){
+          state.timerLeft = Math.max(0, state.timerLeft + 4);
+        }
+        // grant a safe token
+        state.safeTokens += 1;
+        // immediate score bonus
+        const bonus = Math.floor(240 + state.level * 40 + Math.floor(state.mult * 120));
+        state.score += bonus;
+        // small temporary multiplier bump
+        state.mult = Math.min(4.0, state.mult + 0.25);
+
+        showBanner("PERFECT LAND!", `+${bonus} score • +1 SAFE • +4s`);
+        toast("PERFECT!", `Perfect landing — bonus awarded (+${bonus})`, "good");
+        sfx("win", 1.3);
+        if (musicPlaying) { musicFlourish(1.2); musicPulse(0.14); }
+        fxBurst(rect.left+rect.width/2, rect.top+rect.height/2, "confetti", 1.25);
+      }
+
+      // Sloppy Land: only 1 coin inside on higher levels → pressure penalty (next toss harder + small time loss)
+      if (counts.inside === 1 && state.level >= 3){
+        state.pressureActive = true; // applied on next toss
+        if (state.timerLeft != null){
+          state.timerLeft = Math.max(0, state.timerLeft - 2.0);
+        }
+        showBanner("SLOPPY!", "Weak landing — pressure applied");
+        toast("SLOPPY", "Only 1 coin inside — next toss will be harsher", "bad");
+        sfx("lose", 0.95);
+        sceneKick("shake");
+      }
+
+      // Hype additions from landing (inner/bull hits)
+      addHypeFromLanding(counts);
+
+      let landingOK = true;
+      // Mini-boss override: special challenge (e.g., land 3 inside)
+      if (state.phase === "real" && state.miniBossActive){
+        landingOK = (counts.inside >= (state.miniBoss?.requiredInside || 3));
+      } else if (state.phase==="real"){
+        if (state.level <= 2) landingOK = true;
+        else if (state.level <= 4) landingOK = (counts.inside >= 2);
+        else landingOK = (counts.inside >= 3 && counts.inner >= 1);
+      }
+
+      const win = (outcome === state.call) && landingOK;
+
+      // objective progress hook
+      applyObjectiveProgress({ counts, win, outcome });
+
+      // hype banners
+      if (counts.bull >= 2){
+        showBanner("PERFECT!", "Bullseye control!");
+        toast("PERFECT!", "Bullseye control!", "good");
+        sfx("hype", 1.2);
+        if (musicPlaying){ musicFlourish(0.9); musicPulse(0.10); }
+        speak("Perfect!");
+        const rect = stoneZone.getBoundingClientRect();
+        fxBurst(rect.left+rect.width/2, rect.top+rect.height/2, "confetti", 1.25);
+      } else if (!win && counts.inside === 3 && outcome !== state.call){
+        showBanner("SO CLOSE!", "Landing great — call wrong!");
+        toast("SO CLOSE!", "Landing great — call wrong!", "bad");
+        speak("So close!");
+      } else if (!win && outcome === state.call && !landingOK){
+        showBanner("ALMOST THERE!", "Right call, landing not enough!");
+        toast("ALMOST THERE!", "Right call, landing not enough!", "bad");
+        speak("Almost!");
+      }
+
+      // combo system
+      updateCombo(win);
+
+      // Hype processing: if hype hits threshold -> Fever Mode
+      if (state.hype >= 1.0 && !state.fever){
+        state.fever = true;
+        // keep hype clamped
+        state.hype = 1.0;
+        showBanner("FEVER MODE!", "Hype at maximum — play clutch!");
+        toast("FEVER MODE!", "You are on fire — secure that win!", "good");
+        sfx("hype", 1.4);
+        sfxCrowd("win", 1.1);
+        if (musicPlaying){ musicPulse(0.18); musicFlourish(1.1); setMusicTempo(900); }
+        speak("Fever mode!");
+        const rect = stoneZone.getBoundingClientRect();
+        fxBurst(rect.left+rect.width/2, rect.top+rect.height/2, "confetti", 1.6);
+      }
+
+      state.tossing = false;
+
+      if (state.phase === "trial"){
+        state.trial.tossLeft = Math.max(0, state.trial.tossLeft - 1);
+        if (win){
+          sfx("win", 1.05);
+          sfxCrowd("win", 1.0);
+          toast("TRIAL WIN", `Outcome: ${outcome.toUpperCase()}`, "good");
+          speak("Nice!");
+        } else {
+          sfx("lose", 1.0);
+          sfxCrowd("lose", 0.95);
+        }
+        renderHUD();
+
+        if (state.trial.tossLeft <= 0 || state.trial.timeLeft <= 0){
+          endTrial();
+          return;
+        }
+
+        // Delay the keep/change popup slightly so players can see landing visuals
+        setTimeout(() => openKeepChangePopup(win ? "WIN ✅" : `MISS ❌ (${outcome.toUpperCase()})`), 900);
+        return;
+      }
+
+      // REAL
+      if (win){
+        const boosted = state.allInActive || !!state.event?.rewardBoost;
+
+        // Mini-boss special win handling
+        if (state.miniBossActive){
+          const bonus = state.miniBoss?.reward?.amount || 600;
+          state.score += bonus;
+          showBanner("MINI-BOSS DOWN!", `+${bonus} score • Bonus reward`);
+          toast("MINI-BOSS!", `Defeated — bonus +${bonus}`, "good");
+          const rect = stoneZone.getBoundingClientRect();
+          fxBurst(rect.left+rect.width/2, rect.top+rect.height/2, "confetti", 1.6);
+          fxShockwave(rect.left+rect.width/2, rect.top+rect.height/2, 2.2);
+          sceneKick("kick");
+          hitStop(160);
+          sfx("win", 1.4);
+          sfxCrowd("win", 1.3);
+          if (musicPlaying){ musicFlourish(1.35); musicPulse(0.18); }
+          speak("Mini-boss defeated!");
+
+          // clear mini-boss state (we still proceed with normal leveling behavior)
+          state.miniBossActive = false;
+          state.miniBoss = null;
+        }
+
+        // If objective exists and is NOT done, win does NOT level you up
+        if (state.objective && !state.objective.done){
+          // small consolation reward
+          const rect = stoneZone.getBoundingClientRect();
+          const partialBase = 120 + Math.floor(state.level * 15);
+          const partialAdd = Math.floor(partialBase * state.mult * (state.event?.scoreMult || 1) * 0.5);
+          state.score += partialAdd;
+
+          toast("TASK NOT DONE", `Win but task remains: ${state.objective.progress}/${state.objective.goal}`, "bad");
+          showBanner("TASK NOT DONE!", state.objective.label);
+          sfx("ping", 0.95);
+          fxBurst(rect.left+rect.width/2, rect.top+rect.height/2, "spark", 0.75);
+
+          // remind player of the task
+          await showTaskPopup(state.objective, 1800);
+
+          renderHUD();
+        } else {
+          // objective is complete (or none). enforce win-streak requirement
+          const req = streakRequirement(state.level);
+          const cur = state.combo || 0; // consecutive wins count
+
+          if (cur >= req){
+            await levelUp(boosted);
+          } else {
+            // not enough wins in a row — small reward and reminder
+            const rect = stoneZone.getBoundingClientRect();
+            const partialBase = 120 + Math.floor(state.level * 15);
+            const partialAdd = Math.floor(partialBase * state.mult * (state.event?.scoreMult || 1) * 0.5);
+            state.score += partialAdd;
+
+            toast("STREAK NOT MET", `Need ${req} win${req>1?"s":""} in a row • Progress ${cur}/${req}`, "bad");
+            showBanner("STREAK NOT MET!", `Wins ${cur}/${req}`);
+            sfx("lose", 0.95);
+            fxBurst(rect.left+rect.width/2, rect.top+rect.height/2, "spark", 0.8);
+
+            await showStreakPopup(req, cur, 1800);
+            renderHUD();
+          }
+        }
+      } else {
+        let reason = `Wrong call (${outcome.toUpperCase()})`;
+        if (outcome === state.call && !landingOK){
+          reason = `Landing not enough (inside ${counts.inside}/3 inner ${counts.inner}/3 bull ${counts.bull}/3)`;
+        }
+        onFail(reason);
+      }
+
+      // After toss popup + timer restart
+      if (state.phase==="real" && state.attempts > 0){
+        // Delay the keep/change popup so the landing and any FX can be observed
+        setTimeout(() => openKeepChangePopup(win ? "WIN ✅" : "MISS ❌"), 900);
+        setTimeout(() => {
+          if (state.phase==="real" && state.timer != null){
+            state.timerLeft = state.timer;
+            startMainTimer();
+          }
+        }, 3500);
+      }
+    }
+
+    /* ============================
+       Buttons
+    ============================ */
+    tossBtn.addEventListener("click", doToss);
+
+    helpBtn.addEventListener("click", () => {
+      unlockAudio();
+      openIntroStep(0);
+    });
+
+    claimBtn.addEventListener("click", () => {
+      unlockAudio();
+      if (!state.securedPrize){
+        showBanner("NO PRIZE", "Win a level to secure something.");
+        toast("NO PRIZE", "Win a level to secure something.", "bad");
+        sfx("lose", 0.9);
+        speak("No prize.");
+        return;
+      }
+      openModal({
+        title:"Claim Prize",
+        sub:"You stop and keep your secured prize.",
+        body: `<div class="note"><b>Claimed:</b> ${prizeText(state.securedPrize)}</div>`,
+        foot: (() => {
+          const f = document.createElement("div");
+          f.innerHTML = `<button class="btn primary" id="okClaim">OK</button>`;
+          setTimeout(()=> {
+            $("okClaim").onclick = () => {
+              closeModal();
+              showBanner("CLAIMED!", prizeText(state.securedPrize));
+              toast("CLAIMED", prizeText(state.securedPrize), "good");
+              sfx("win",1.2);
+              sfxCrowd("win", 1.05);
+              speak("Claimed!");
+            };
+          },0);
+          return f;
+        })(),
+        closable:false
+      });
+    });
+
+    resetBtn.addEventListener("click", () => {
+      unlockAudio();
+      closeModal();
+      startMenu();
+    });
+
+    vol.addEventListener("input", () => setVolume(Number(vol.value)));
+
+    // Unlock audio on first interaction anywhere
+    window.addEventListener("pointerdown", unlockAudio, { once:false });
+
+    /* ============================
+       INIT
+    ============================ */
+    window.addEventListener("resize", fxResize);
+    fxResize();
+    fxTick();
+    requestAnimationFrame(raf);
+
+    startMenu();
+    renderHUD();
+    rebuildIllusions();
+
+    // start music if user had it enabled (persisted flag available)
+    if (state.musicOn){ toggleMusic(true); }
+  </script>
+</body>
+</html>
